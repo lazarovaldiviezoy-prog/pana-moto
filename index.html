@@ -245,6 +245,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .dtip::before{display:none}
 button.av{border:0;cursor:pointer;flex:none}
 .modes button{padding:6px 9px}
+.adocs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.adocs button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:4px;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.adocs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;display:block}
+.adocs .pulse{margin:18px 0}
+.adocs small{font-size:.66rem;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bigdoc{display:flex;flex-direction:column;gap:8px}
+.bigdoc img{width:100%;max-height:60vh;object-fit:contain;border-radius:12px;background:var(--surface-2)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -843,6 +850,195 @@ addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; if
 addEventListener("appinstalled",()=>{ installEvt=null; toast("¡Pana Moto quedó instalada!"); render(); });
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 
+/* ================= Conexión con el servidor (Fase 1) ================= */
+const API_URL = "https://pana-moto-api-production.up.railway.app";   // dirección del backend en Railway
+const API = /^https?:\/\//.test(API_URL) ? API_URL.replace(/\/+$/,"") : "";
+SAVED.token = store.get("token", null);
+SAVED.adminKey = store.get("adminKey", "");
+SAVED.acctPhone = store.get("acctPhone", "");
+S.dregFiles = {};
+S.adm = {list:null, stats:null, thumbs:{}, loading:false, big:null};
+let busy = false;
+
+async function api(path, {method="GET", body, form, admin}={}){
+  const h = {};
+  if(SAVED.token && !admin) h.Authorization = "Bearer " + SAVED.token;
+  if(admin) h["X-Admin-Key"] = SAVED.adminKey;
+  if(body) h["Content-Type"] = "application/json";
+  let r;
+  try{ r = await fetch(API+path, {method, headers:h, body: form || (body ? JSON.stringify(body) : undefined)}); }
+  catch{ throw new Error("Sin conexión con el servidor. Revisa tu señal e intenta de nuevo."); }
+  let data = null; try{ data = await r.json(); }catch{}
+  if(r.status===401 && !admin){ SAVED.token=null; save("token"); }
+  if(!r.ok) throw new Error(data && typeof data.detail==="string" ? data.detail : `El servidor no respondió bien (${r.status}). Intenta de nuevo.`);
+  return data;
+}
+async function apiBlob(path){
+  const r = await fetch(API+path, {headers:{"X-Admin-Key":SAVED.adminKey}});
+  if(!r.ok) throw new Error("No se pudo cargar la foto");
+  return URL.createObjectURL(await r.blob());
+}
+function withBusy(btn, fn){
+  if(busy) return; busy = true;
+  if(btn){ btn.disabled = true; btn.textContent = "Un momento…"; }
+  return fn().catch(err=>toast(err.message)).finally(()=>{ busy=false; render(); });
+}
+async function compressImg(file){
+  try{
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 1280/Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(res=>c.toBlob(b=>res(b||file), "image/jpeg", .8));
+  }catch{ return file; }
+}
+function setDriverFromServer(d){
+  const old = SAVED.driver || {};
+  SAVED.driver = {...old, serverId:d.id, name:d.name, ci:d.ci, sex:d.sex, phone:old.phone||SAVED.acctPhone, model:d.model, plate:d.plate,
+    docs:d.docs, bank:d.bank, payPhone:d.pay_phone, payCi:d.pay_ci, plan:old.plan||d.plan, status:d.status, rejectReason:d.reject_reason,
+    promoUntil: d.promo_until ? Date.parse(d.promo_until) : 0, balance: old.balance ?? 0, weekUntil: old.weekUntil || 0,
+    trips: old.trips || [], createdAt: Date.parse(d.created_at)};
+  save("driver");
+}
+function setUserFromServer(u){
+  SAVED.acctPhone = u.phone; save("acctPhone");
+  SAVED.user = u.name ? {name:u.name, phone:u.phone, code:u.ref_code || makeCode(u.name), id:u.id} : null; save("user");
+  if(u.driver) setDriverFromServer(u.driver);
+  else if(SAVED.driver){ SAVED.driver = null; save("driver"); }
+}
+async function syncFromServer(){
+  if(!API) return;
+  try{ const c = await api("/config"); SAVED.admin.com = c.commission; SAVED.admin.promo = c.promo_first_month; save("admin"); }catch{}
+  if(SAVED.token){
+    try{ setUserFromServer(await api("/me")); }
+    catch{ if(!SAVED.token){ SAVED.user=null; save("user"); SAVED.driver=null; save("driver"); } }
+  }
+  if(!SAVED.user && S.mode==="pas" && !S.overlay) S.overlay = "regpas";
+  render();
+}
+setInterval(async()=>{
+  if(!API || !SAVED.token || S.mode!=="con" || SAVED.driver?.status!=="pending" || document.hidden) return;
+  try{
+    const d = await api("/drivers/me");
+    if(d.status !== SAVED.driver.status){
+      setDriverFromServer(d);
+      toast(d.status==="approved" ? "¡Tu registro fue aprobado! Ya puedes recibir viajes." : "Tu registro no fue aprobado. Revisa el motivo.");
+      render();
+    }
+  }catch{}
+}, 15000);
+
+/* ---------- Panel de administrador real ---------- */
+const DOC_LABEL = {cedula:"Cédula", selfie:"Selfie", licencia:"Licencia", carnet:"Carnet", rcv:"RCV", antecedentes:"Antecedentes", moto:"Moto"};
+async function loadAdmin(){
+  S.adm.loading = true;
+  try{
+    const [stats, list] = await Promise.all([api("/admin/stats",{admin:true}), api("/admin/drivers?status=pending",{admin:true})]);
+    S.adm.stats = stats; S.adm.list = list;
+    SAVED.admin.com = stats.settings.commission; SAVED.admin.promo = stats.settings.promo_first_month; save("admin");
+    list.forEach(d=>d.docs.forEach(k=>{
+      const key = d.id+"/"+k;
+      if(!S.adm.thumbs[key]) apiBlob(`/admin/drivers/${d.id}/docs/${k}`).then(u=>{ S.adm.thumbs[key]=u; if(S.overlay==="admin") render(); }).catch(()=>{});
+    }));
+  }catch(e){
+    toast(e.message); S.adm.list = []; S.adm.stats = null;
+    if(/administrador/.test(e.message)){ SAVED.adminKey = ""; save("adminKey"); }
+  }finally{ S.adm.loading = false; if(S.overlay==="admin") render(); }
+}
+function adminReal(){
+  const head = `<div class="grab"></div><div class="ovhead"><h2>Panel de administrador</h2>${closeBtn()}</div>`;
+  if(!SAVED.adminKey) return head + `<p class="hint">Escribe la clave de administrador que configuraste en Railway (ADMIN_KEY).</p>
+    <input id="admkey" class="inp" type="password" placeholder="Clave de administrador" autocomplete="current-password">
+    <button class="cta" id="admLogin">Entrar</button>`;
+  if(!S.adm.list){ if(!S.adm.loading) loadAdmin(); return head + `<div class="searching"><span class="pulse"></span>Cargando…</div>`; }
+  const st = S.adm.stats, set = st?.settings || {commission:comRate(), promo_first_month:SAVED.admin.promo};
+  const big = S.adm.big && S.adm.thumbs[S.adm.big];
+  return head + `
+  ${st?`<div class="earn"><div><small>Usuarios</small><b>${st.users}</b></div><div><small>Aprobados</small><b>${st.drivers_approved}</b></div><div><small>Por aprobar</small><b>${st.drivers_pending}</b></div></div>`:""}
+  ${big?`<div class="bigdoc"><img src="${big}" alt="Documento ampliado"><button class="ghost" data-big="">Cerrar foto</button></div>`:""}
+  <div class="row" style="justify-content:space-between;align-items:center"><span class="lbl">Motorizados por aprobar (${S.adm.list.length})</span><button class="link" id="admReload">↻ Actualizar</button></div>
+  ${S.adm.list.length ? S.adm.list.map(d=>`<div class="req">
+    <div class="top"><strong>${esc(d.name)}</strong><span class="hint">${esc(d.sex)}</span></div>
+    <div class="route">${esc(d.ci)} · +${esc(d.phone)}<br>${esc(d.model)} · <b>${esc(d.plate)}</b><br>Cobro: ${esc(d.bank)} · ${esc(d.pay_phone)} · Plan ${d.plan==="week"?"semanal":"por viaje"}<br><span class="hint">Enviado ${fmtDate(Date.parse(d.created_at))}</span></div>
+    <div class="adocs">${d.docs.map(k=>{ const u=S.adm.thumbs[d.id+"/"+k];
+      return `<button data-big="${d.id}/${k}" aria-label="Ver ${DOC_LABEL[k]||k}">${u?`<img src="${u}" alt="">`:`<span class="pulse"></span>`}<small>${DOC_LABEL[k]||k}</small></button>`; }).join("")}</div>
+    <input id="rr-${d.id}" class="inp" placeholder="Motivo si lo rechazas (ej. la foto de la cédula está borrosa)" autocomplete="off">
+    <div class="ctr"><button class="acc" data-approve="${d.id}">Aprobar</button><button data-reject="${d.id}">Rechazar</button></div>
+  </div>`).join("") : `<p class="hint">No hay registros pendientes. Cuando un motorizado se registre, aparecerá aquí.</p>`}
+  <div class="lbl">Configuración</div>
+  <button class="toggle green" id="adm-promo" aria-pressed="${set.promo_first_month}"><span>Primer mes sin comisión<small>Para motorizados nuevos al aprobarlos</small></span><i></i></button>
+  <div class="mix"><span>Comisión por viaje</span><div class="stepper sm"><button id="adm-cm" aria-label="Bajar comisión">−</button><output>${Math.round(set.commission*100)}%</output><button id="adm-cp" aria-label="Subir comisión">+</button></div></div>
+  <button class="link" id="admOut">Salir del panel de administrador</button>`;
+}
+
+/* ---------- Eventos que usan el servidor (se ejecutan antes que los de demo) ---------- */
+document.addEventListener("click", e=>{
+  if(!API) return;
+  const t = e.target.closest("button"); if(!t) return;
+  const d = t.dataset, val = id => ($("#"+id)?.value||"").trim();
+  const run = fn => { e.stopImmediatePropagation(); e.preventDefault(); withBusy(t, fn); };
+  const stop = msg => { e.stopImmediatePropagation(); e.preventDefault(); toast(msg); };
+
+  if(d.ov==="admin"){ S.adm.list=null; S.adm.big=null; }
+  /* cuenta del pasajero */
+  if(t.id==="rp-send"){ if(digits(S.reg.phone).length<9) return stop("Escribe un número válido, por ejemplo 0412-1234567");
+    return run(async()=>{ const r = await api("/auth/send-code",{method:"POST",body:{phone:S.reg.phone}}); S.reg.sent="ok"; S.reg.demo=r.demo_code||""; S.reg.step=2; }); }
+  if(t.id==="rp-verify"){ const code = val("rp-code"); if(code.length<4) return stop("Escribe los 4 dígitos");
+    return run(async()=>{ const r = await api("/auth/verify",{method:"POST",body:{phone:S.reg.phone, code}});
+      SAVED.token = r.token; save("token"); setUserFromServer(r.user);
+      if(r.user.name){ S.reg=null; S.overlay=null; toast(`¡Hola de nuevo, ${firstName(r.user.name)}!`); } else S.reg.step=3; }); }
+  if(t.id==="rp-done"){ const n = S.reg.name.trim(); if(n.length<2) return stop("Escribe tu nombre");
+    return run(async()=>{ setUserFromServer(await api("/me",{method:"PUT",body:{name:n}})); S.reg=null; S.overlay=null; toast(`¡Bienvenido, ${firstName(n)}!`); }); }
+  if(t.id==="logout"){ SAVED.token=null; save("token"); SAVED.driver=null; save("driver"); }
+
+  /* registro del motorizado */
+  if(t.id==="dr-send"){ if(digits(S.dreg.phone).length<9) return stop("Escribe un número válido, por ejemplo 0412-1234567");
+    return run(async()=>{ const r = await api("/auth/send-code",{method:"POST",body:{phone:S.dreg.phone}}); S.dreg.sent="ok"; S.dreg.demo=r.demo_code||""; }); }
+  if(t.id==="dr-verify"){ const code = val("dr-code"); if(code.length<4) return stop("Escribe los 4 dígitos");
+    return run(async()=>{ const r = await api("/auth/verify",{method:"POST",body:{phone:S.dreg.phone, code}});
+      SAVED.token = r.token; save("token"); setUserFromServer(r.user);
+      if(r.user.driver) S.dreg = null; else { S.dreg.step = 2; if(!S.dreg.name && r.user.name) S.dreg.name = r.user.name; } }); }
+  if(t.id==="dr-finish"){ const r = S.dreg;
+    const need = ["cedula","selfie","licencia","carnet","rcv","moto"].filter(k=>!S.dregFiles[k]);
+    if(need.length) return stop("Estamos procesando tus fotos. Intenta de nuevo en un segundo.");
+    return run(async()=>{
+      const fd = new FormData();
+      Object.entries({full_name:r.name.trim(), ci:r.ci.trim(), sex:r.sex, model:r.model.trim(), plate:r.plate.trim(),
+        bank:r.bank.trim(), pay_phone:r.payPhone, pay_ci:r.payCi, plan:r.plan}).forEach(([k,v])=>fd.append(k,v));
+      Object.entries(S.dregFiles).forEach(([k,b])=>fd.append(k, b, k+".jpg"));
+      await api("/drivers/register",{method:"POST",form:fd});
+      setUserFromServer(await api("/me"));
+      SAVED.driver.plan = r.plan; SAVED.driver.phone = SAVED.acctPhone; save("driver");
+      S.dreg=null; S.dregFiles={}; S.docThumbs={};
+      toast("Registro enviado. Te avisaremos por WhatsApp.");
+    }); }
+  if(t.id==="dr-refresh") return run(async()=>{ setDriverFromServer(await api("/drivers/me")); toast("Estado actualizado"); });
+  if(t.id==="dr-reset") return run(async()=>{ await api("/drivers/me",{method:"DELETE"}); SAVED.driver=null; save("driver"); S.dreg=null; });
+
+  /* panel de administrador */
+  if(t.id==="admLogin"){ const k = val("admkey"); if(!k) return stop("Escribe la clave");
+    return run(async()=>{ SAVED.adminKey = k; try{ await api("/admin/check",{admin:true}); }catch(err){ SAVED.adminKey=""; throw err; }
+      save("adminKey"); S.adm = {list:null, stats:null, thumbs:{}, loading:false, big:null}; }); }
+  if(t.id==="admOut"){ e.stopImmediatePropagation(); SAVED.adminKey=""; save("adminKey"); S.adm.list=null; S.overlay=null; render(); return; }
+  if(t.id==="admReload"){ e.stopImmediatePropagation(); S.adm.list=null; render(); return; }
+  if(d.big!==undefined && S.overlay==="admin"){ e.stopImmediatePropagation(); S.adm.big = d.big || null; render(); if(d.big) sheet.scrollTop=0; return; }
+  if(d.approve!==undefined && S.overlay==="admin") return run(async()=>{
+    const r = await api(`/admin/drivers/${d.approve}/approve`,{method:"POST",admin:true}); toast(`Aprobado: ${r.name}`);
+    if(SAVED.driver?.serverId===r.id) setDriverFromServer(r); S.adm.list=null; });
+  if(d.reject!==undefined && S.overlay==="admin"){ const reason = val("rr-"+d.reject);
+    return run(async()=>{ const r = await api(`/admin/drivers/${d.reject}/reject`,{method:"POST",admin:true,body:{reason}}); toast(`Rechazado: ${r.name}`);
+      if(SAVED.driver?.serverId===r.id) setDriverFromServer(r); S.adm.list=null; }); }
+  if(["adm-promo","adm-cp","adm-cm"].includes(t.id) && S.overlay==="admin"){
+    const cur = S.adm.stats?.settings || {commission:comRate(), promo_first_month:SAVED.admin.promo};
+    const body = t.id==="adm-promo" ? {promo_first_month:!cur.promo_first_month}
+      : {commission: Math.min(.25, Math.max(.03, +(cur.commission + (t.id==="adm-cp"?.01:-.01)).toFixed(2)))};
+    return run(async()=>{ const s = await api("/admin/settings",{method:"PUT",admin:true,body});
+      if(S.adm.stats) S.adm.stats.settings = s; SAVED.admin.com = s.commission; SAVED.admin.promo = s.promo_first_month; save("admin"); });
+  }
+}, true);
+
+const demoLine = r => (r.demo ?? r.sent) ? `<p class="demo">${API?"Modo prueba":"Demo"}: tu código es <b>${r.demo ?? r.sent}</b></p>` : "";
+
 /* ================= Cuentas, billetera y administrador (demo) ================= */
 SAVED.user = store.get("user", null);
 SAVED.history = store.get("history", []);
@@ -895,7 +1091,7 @@ OV.menu = () => `<div class="grab"></div>
     <button data-ov="history">🧾 Mis viajes<span>${SAVED.history.length||""}</span></button>
     <button data-ov="invite">🎁 Invita a un pana<span>${SAVED.credit?fmtUSD(SAVED.credit)+" de saldo":"Gana $1"}</span></button>
     <button data-ov="sos">🚨 Contacto de emergencia<span>${SAVED.sos?esc(SAVED.sos.name):"Sin configurar"}</span></button>
-    <button data-ov="admin">🛠️ Panel de administrador<span>Demo</span></button>
+    <button data-ov="admin">🛠️ Panel de administrador<span>${API?"Aprobar motorizados":"Demo"}</span></button>
     ${SAVED.user?`<button id="logout">🚪 Cerrar sesión<span></span></button>`:""}
   </div>
   <p class="hint">Prototipo: tus datos se guardan solo en este celular.</p>`;
@@ -908,7 +1104,7 @@ OV.regpas = () => {
     <input id="rp-phone" class="inp" inputmode="tel" placeholder="0412-1234567" value="${esc(r.phone)}" autocomplete="tel">
     <button class="cta" id="rp-send">Enviar código por WhatsApp</button>`;
   else if(r.step===2) b=`<p class="hint">Enviamos un código de 4 dígitos al <b>${esc(r.phone)}</b> por WhatsApp.</p>
-    <p class="demo">Demo: tu código es <b>${r.sent}</b></p>
+    ${demoLine(r)}
     <input id="rp-code" class="inp code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="one-time-code">
     <button class="cta" id="rp-verify">Verificar</button><button class="link" id="rp-back">Cambiar número</button>`;
   else b=`<label class="lbl" for="rp-name">¿Cómo te llamas?</label>
@@ -980,7 +1176,8 @@ OV.plan = () => { const d=SAVED.driver, sel=S.planSel||d.plan;
   <p class="hint">El plan semanal se cobra de tu saldo ($5) al activarlo.</p>
   <button class="cta" id="planSave">Guardar plan</button>`; };
 
-OV.admin = () => {
+OV.admin = () => API ? adminReal() : OV.adminDemo();
+OV.adminDemo = () => {
   const d=SAVED.driver;
   const pend=[...(d&&d.status==="pending"?[{own:true,n:d.name,ci:d.ci,moto:`${d.model} · ${d.plate.toUpperCase()}`,sex:d.sex,docs:d.docs.length}]:[]),
     ...ADMIN_PENDING.map((p,i)=>({...p,idx:i,docs:7}))];
@@ -1011,13 +1208,15 @@ function docRow(k,label){
 function dregView(){
   const r = S.dreg || (S.dreg={step:1,phone:"",sent:"",name:"",ci:"",sex:"",docs:{},model:"",plate:"",bank:"",payPhone:"",payCi:"",plan:"pct"});
   let b="";
-  if(r.step===1) b = r.sent ? `<p class="hint">Enviamos un código al <b>${esc(r.phone)}</b> por WhatsApp.</p><p class="demo">Demo: tu código es <b>${r.sent}</b></p>
+  if(r.step===1) b = r.sent ? `<p class="hint">Enviamos un código al <b>${esc(r.phone)}</b> por WhatsApp.</p>${demoLine(r)}
       <input id="dr-code" class="inp code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="one-time-code">
       <button class="cta" id="dr-verify">Verificar</button><button class="link" id="dr-rephone">Cambiar número</button>`
     : `<p class="hint">Gana dinero con tu moto. El registro toma unos 5 minutos y lo revisamos en menos de 24 horas.</p>
       <label class="lbl" for="dr-phone">Tu número de teléfono</label>
       <input id="dr-phone" class="inp" inputmode="tel" placeholder="0412-1234567" value="${esc(r.phone)}" autocomplete="tel">
       <button class="cta" id="dr-send">Enviar código por WhatsApp</button>`;
+  if(r.step===1 && API && SAVED.token) b=`<p class="hint">Gana dinero con tu moto. El registro toma unos 5 minutos y lo revisamos en menos de 24 horas.</p>
+      <div class="mix"><span>Tu cuenta</span><b>+${esc(SAVED.acctPhone)}</b></div><button class="cta" id="dr-useacct">Continuar con esta cuenta</button>`;
   if(r.step===2) b=`<input id="dr-name" class="inp" placeholder="Nombre y apellido" value="${esc(r.name)}" autocomplete="name">
     <input id="dr-ci" class="inp" placeholder="Cédula (V-12.345.678)" value="${esc(r.ci)}" autocomplete="off">
     <div class="lbl">Sexo</div><div class="row">${["Hombre","Mujer"].map(x=>`<button class="chip" data-sex="${x}" aria-pressed="${r.sex===x}">${x}</button>`).join("")}</div>
@@ -1046,12 +1245,12 @@ function pendingView(){
   <p class="hint">Hola ${esc(firstName(d.name))}, revisamos tus documentos en menos de 24 horas y te avisamos por WhatsApp al ${esc(d.phone)}.</p>
   <div class="checks">${DOCS.concat([["moto","Foto de la moto"]]).map(([k,l])=>`<div><span>${d.docs.includes(k)?"✓":"—"}</span>${l.replace(" (opcional)","")}</div>`).join("")}</div>
   <div class="note">Moto: ${esc(d.model)} · ${esc(d.plate.toUpperCase())}<br>Plan: ${d.plan==="week"?"$5 a la semana":Math.round(comRate()*100)+"% por viaje"} · Primer mes sin comisión</div>
-  <button class="cta" data-ov="admin">Abrir panel de administrador (demo)</button>
+  ${API?`<button class="cta" id="dr-refresh">↻ Actualizar estado</button><button class="ghost" data-ov="admin">Panel de administrador</button>`:`<button class="cta" data-ov="admin">Abrir panel de administrador (demo)</button>`}
   <button class="link" id="dr-reset">Borrar registro y empezar de nuevo</button>`;
 }
 function rejectedView(){
   return `<div class="grab"></div><h2>Registro no aprobado</h2>
-  <p class="hint">Alguno de tus documentos no se pudo verificar. Revisa que las fotos sean claras y vuelve a enviar tu registro.</p>
+  <p class="hint">${esc(SAVED.driver.rejectReason||"Alguno de tus documentos no se pudo verificar.")}</p><p class="hint">Revisa que las fotos sean claras y vuelve a enviar tu registro.</p>
   <button class="cta" id="dr-reset">Volver a registrarme</button>`;
 }
 function weekChart(d){
@@ -1151,7 +1350,7 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
   const k=e.target.dataset?.doc, f=e.target.files?.[0];
-  if(k && f && S.dreg){ S.dreg.docs[k]=f.name; try{ S.docThumbs[k]=URL.createObjectURL(f); }catch{} render(); }
+  if(k && f && S.dreg){ S.dreg.docs[k]=f.name; delete S.dregFiles[k]; compressImg(f).then(b=>{ S.dregFiles[k]=b; }); try{ S.docThumbs[k]=URL.createObjectURL(f); }catch{} render(); }
 });
 
 document.addEventListener("click",e=>{
@@ -1175,6 +1374,7 @@ document.addEventListener("click",e=>{
   else if(t.id==="logout"){ SAVED.user=null; save("user"); S.reg=null; S.overlay="regpas"; }
 
   /* registro del motorizado */
+  else if(t.id==="dr-useacct"){ S.dreg.step=2; if(!S.dreg.name && SAVED.user) S.dreg.name=SAVED.user.name; }
   else if(t.id==="dr-send"){ if(digits(S.dreg.phone).length<10) return block("Escribe un número válido, por ejemplo 0412-1234567"); S.dreg.sent=newCode(); }
   else if(t.id==="dr-verify"){ if(val("dr-code")!==S.dreg.sent) return block("Código incorrecto. Revisa tu WhatsApp."); S.dreg.step=2; }
   else if(t.id==="dr-rephone"){ S.dreg.sent=""; }
@@ -1259,10 +1459,13 @@ document.addEventListener("click",e=>{
 },true);
 
 /* ================= Arranque ================= */
+if(API && !SAVED.token){ SAVED.user=null; save("user"); }
+if(API && SAVED.driver && !SAVED.driver.serverId){ SAVED.driver=null; save("driver"); }
 if(!SAVED.user) S.overlay="regpas";
 netState();
 render();
 locate(true);
+syncFromServer();
 loadLeaflet().then(initMap).catch(()=>{
   $("#mapmsg").textContent="No se pudo cargar el mapa con esta conexión. Igual puedes buscar tu destino por nombre.";
   $("#locbtn").hidden=true; $("#stylebtn").hidden=true;
