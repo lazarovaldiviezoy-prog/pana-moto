@@ -177,13 +177,81 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .mk .fl{display:grid;transition:transform .3s}
 .me{width:18px;height:18px;border-radius:50%;background:#2f6bff;border:3px solid #fff;box-shadow:0 0 0 8px rgba(47,107,255,.2)}
 .pt{width:18px;height:18px;border-radius:50%;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.menu{border:0;background:rgba(255,255,255,.14);color:#fff;width:34px;height:34px;border-radius:10px;font-size:1.1rem;display:grid;place-items:center;flex:none}
+.ovhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.x{border:0;background:var(--surface-2);width:34px;height:34px;border-radius:50%;font-size:.95rem;flex:none}
+.x.sm{width:28px;height:28px;font-size:.8rem}
+.link{border:0;background:none;color:var(--accent);font-weight:700;padding:4px 0;text-align:left;align-self:flex-start}
+@media (prefers-color-scheme:dark){ .link,.field .go{color:var(--gold)} }
+.demo{margin:0;font-size:.82rem;background:color-mix(in srgb,var(--gold) 25%,var(--surface));border-radius:8px;padding:6px 10px}
+.vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.list{display:flex;flex-direction:column}
+.list button{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;border-bottom:1px solid var(--line);background:none;padding:14px 4px;font-weight:600;text-align:left}
+.list button span{color:var(--muted);font-weight:500;font-size:.85rem}
+.wiz{display:flex;gap:4px;list-style:none;margin:0;padding:0}
+.wiz li{flex:1;min-width:0;font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding-top:6px;border-top:4px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wiz li.ok{border-color:var(--gold)} .wiz li.on{border-color:var(--accent);color:var(--ink)}
+.inp.code{font-size:1.6rem;letter-spacing:.5em;text-align:center;font-family:var(--display)}
+.docs{display:flex;flex-direction:column;gap:6px}
+.doc{position:relative;display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;border:1.5px dashed var(--line);border-radius:12px;padding:8px 10px;cursor:pointer}
+.doc.ok{border-style:solid;border-color:var(--good)}
+.doc:focus-within{outline:3px solid var(--gold)}
+.doc .th{width:44px;height:44px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;overflow:hidden;font-size:1.2rem}
+.doc .th img{width:100%;height:100%;object-fit:cover}
+.doc > span:nth-child(2){min-width:0}
+.doc b{display:block;font-size:.9rem} .doc small{display:block;color:var(--muted);font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc .st{font-weight:700;font-size:.8rem;color:var(--accent)} .doc.ok .st{color:var(--good)}
+.plans{display:flex;flex-direction:column;gap:8px}
+.plan{border:1.5px solid var(--line);background:var(--surface);border-radius:14px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:3px}
+.plan[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.plan small{color:var(--muted);font-size:.8rem;line-height:1.4}
+.promo{background:color-mix(in srgb,var(--gold) 25%,var(--surface));border-radius:12px;padding:10px 12px;font-size:.85rem;line-height:1.45}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.84rem}
+.checks div{display:flex;gap:6px;align-items:center} .checks span{color:var(--good);font-weight:800}
+.wallet{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--accent);color:#fff;border-radius:16px;padding:14px}
+.wallet > div:first-child{min-width:0}
+.wallet small{display:block;font-size:.7rem;opacity:.85;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.wallet b{display:block;font-family:var(--display);font-size:1.7rem;font-variant-numeric:tabular-nums}
+.wallet span{font-size:.8rem;opacity:.92}
+.wallet .wbtn{display:flex;flex-direction:column;gap:6px;flex:none}
+.wallet .wbtn .cta{background:var(--gold);color:var(--gold-ink);padding:9px 14px;font-size:.88rem}
+.wallet .wbtn .ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.45);padding:8px 14px;font-size:.85rem}
+.wallet.low{outline:3px solid var(--bad)}
+.alert{background:color-mix(in srgb,var(--bad) 14%,var(--surface));color:var(--bad);border-radius:10px;padding:8px 10px;font-weight:700;font-size:.85rem}
+.chart{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.ch-head{display:flex;justify-content:space-between;align-items:baseline}
+.ch-head b{font-family:var(--display);font-size:1.15rem;font-variant-numeric:tabular-nums}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:110px;align-items:end}
+.bars .b{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bars .b span{width:100%;max-width:26px;background:color-mix(in srgb,var(--accent) 40%,var(--surface-2));border-radius:6px 6px 2px 2px}
+.bars .b.t span{background:var(--gold)}
+.bars small{font-size:.68rem;color:var(--muted);font-weight:700}
+.hist{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.hist .top{display:flex;justify-content:space-between;gap:8px} .hist .top strong{font-size:.9rem;min-width:0}
+.hrow{display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:8px 0;font-size:.88rem}
+.hrow small{display:block;color:var(--muted);font-size:.75rem}
+.codebox{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px 10px;border:2px dashed var(--gold);border-radius:14px;padding:12px}
+.codebox small{grid-column:1/-1;color:var(--muted);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.codebox b{font-family:var(--display);font-size:1.5rem;letter-spacing:.04em}
+.codebox .ghost{width:auto;padding:8px 14px}
+.mopic{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px}
+.mopic .mp{width:72px;height:72px;border-radius:12px;display:grid;place-items:center;color:#fff;flex:none}
+.mopic small{display:block;color:var(--muted);font-size:.8rem}
+.review{border-bottom:1px solid var(--line);padding:6px 0;font-size:.86rem;line-height:1.4}
+.review span{color:var(--gold);margin-right:6px;font-size:.8rem}
+.dot.c{background:#e8891a}
+.when{align-items:center} .when .inp{flex:1;padding:7px 10px;min-width:0}
+.dtip{background:transparent!important;border:0!important;box-shadow:none!important;color:#fff!important;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.7);font-size:.75rem}
+.dtip::before{display:none}
+button.av{border:0;cursor:pointer;flex:none}
+.modes button{padding:6px 9px}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="brand">Pana<i>Moto</i></div>
+  <div class="row nw" style="align-items:center;gap:8px"><button class="menu" id="menuBtn" aria-label="Menú">☰</button><div class="brand">Pana<i>Moto</i></div></div>
   <div class="modes" role="group" aria-label="Modo">
     <button id="m-pas" aria-pressed="true">Pasajero</button>
     <button id="m-con" aria-pressed="false">Motorizado</button>
@@ -349,9 +417,9 @@ async function search(q){
 async function getRoute(){
   if(!S.from||!S.to) return;
   const a=S.from, b=S.to;
-  let coords=[[a.lat,a.lng],[b.lat,b.lng]], km=haversine(a,b)*1.3, min=Math.round(km*2.5+3);
+  let coords=[a,...S.stops,b].map(q=>[q.lat,q.lng]), km=haversine(a,b)*1.3, min=Math.round(km*2.5+3);
   try{
-    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`);
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${[a,...S.stops,b].map(q=>q.lng+","+q.lat).join(";")}?overview=full&geometries=geojson`);
     const d=await r.json();
     if(d.routes?.[0]){ const rt=d.routes[0]; coords=rt.geometry.coordinates.map(c=>[c[1],c[0]]); km=rt.distance/1000; min=Math.round(rt.duration/60*.8); }
   }catch{}
@@ -359,7 +427,7 @@ async function getRoute(){
 }
 function haversine(a,b){ const R=6371,t=x=>x*Math.PI/180, dl=t(b.lat-a.lat), dg=t(b.lng-a.lng);
   return 2*R*Math.asin(Math.sqrt(Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dg/2)**2)); }
-function suggest(){ if(!S.route) return 1.5; const b=Math.max(1.5,.8+S.route.km*.45)*(S.svc==="encomienda"?1.2:1); return Math.round(b*2)/2; }
+function suggest(){ if(!S.route) return 1.5; const b=Math.max(1.5,.8+S.route.km*.45)*(S.svc==="encomienda"?1.2:1); return Math.round((b+S.stops.length*.5)*2)/2; }
 function fitRoute(){ if(map && routeLn) map.fitBounds(routeLn.getBounds(),{padding:[40,40]}); }
 
 function drawLayers(){
@@ -379,8 +447,9 @@ function drawLayers(){
   else if(!driverMks.length) spawnDrivers();
   else if(pas && S.women) driverMks.forEach(d=>d.mk.setOpacity(d.f?1:.25));
   else driverMks.forEach(d=>d.mk.setOpacity(1));
+  drawExtra();
   $("#cpin").hidden=!S.picking;
-  $("#cpinHead").style.background = S.picking==="from" ? "#16804a" : "#c23b2e";
+  $("#cpinHead").style.background = S.picking==="from" ? "#16804a" : S.picking==="stop" ? "#e8891a" : "#c23b2e";
 }
 
 /* ================= Motos circulando ================= */
@@ -437,7 +506,7 @@ async function confirmPick(pt){
     c={lat:m.lat, lng:m.lng, name:(S.pickName && !/…$/.test(S.pickName)) ? S.pickName : await reverse({lat:m.lat,lng:m.lng})};
   }
   const which=S.picking||"to", place={lat:c.lat,lng:c.lng,name:c.name};
-  S[which]=place;
+  if(which==="stop") S.stops.push(place); else S[which]=place;
   if(S.saveAs){ SAVED.places[S.saveAs]=place; store.set("places",SAVED.places); toast((S.saveAs==="casa"?"Casa":"Trabajo")+" guardado en tu celular"); }
   else if(which==="to") addRecent(place);
   S.picking=null; S.saveAs=null; S.route=null; render();
@@ -471,6 +540,8 @@ function home(){
   <div style="display:flex;flex-direction:column;gap:6px">
     ${fieldBtn("from","a","Recogerte en",S.from,"Obteniendo tu ubicación…")}
     ${fieldBtn("to","b","Destino",S.to,"Toca para elegir destino")}
+    ${S.stops.map((st,i)=>`<div class="field" style="grid-template-columns:14px 1fr auto"><span class="dot c"></span><span class="txt"><small>Parada ${i+1}</small><span>${esc(st.name)}</span></span><button class="x sm" data-delstop="${i}" aria-label="Quitar parada">✕</button></div>`).join("")}
+    ${S.to&&S.stops.length<2?`<button class="link" id="addStop">+ Agregar parada (+$0.50)</button>`:""}
   </div>
   ${quick()}
   ${r?`<p class="hint">📏 <b>${r.km.toFixed(1)} km</b> · aprox. <b>${r.min} min</b> en moto</p>`:""}
@@ -496,19 +567,21 @@ function home(){
   <div class="mix"><span>Efectivo en $</span><div class="stepper sm"><button id="mixm" aria-label="Menos efectivo">−</button><output>${fmtUSD(S.mixUsd)}</output><button id="mixp" aria-label="Más efectivo">+</button></div></div>
   <p class="hint">Resto por Pago Móvil: <b>${fmtBs((S.usd-S.mixUsd)*RATE)}</b></p>`:""}
   <label class="rate" for="tasa">Tasa Bs/$ (ejemplo) <input id="tasa" type="number" min="1" step="0.01" value="${RATE}"></label>`:""}
-  <button class="cta" id="go" ${S.from&&S.to&&r?"":"disabled"}>${S.to?(r?"Buscar motorizado":"Calculando ruta…"):"Elige tu destino"}</button>`;
+  ${r?`<div class="row nw when"><button class="chip" data-when="now" aria-pressed="${S.whenMode==="now"}">Ahora</button><button class="chip" data-when="later" aria-pressed="${S.whenMode==="later"}">🕐 Programar</button>${S.whenMode==="later"?`<input id="when" class="inp" type="datetime-local" value="${S.when}" min="${localISO(Date.now()+15*6e4)}" aria-label="Fecha y hora del viaje">`:""}</div>`:""}
+  ${SAVED.credit&&r?`<p class="hint">🎁 Tienes <b>${fmtUSD(SAVED.credit)}</b> de descuento para este viaje.</p>`:""}
+  <button class="cta" id="go" ${S.from&&S.to&&r?"":"disabled"}>${S.to?(r?(S.whenMode==="later"?"Programar viaje":"Buscar motorizado"):"Calculando ruta…"):"Elige tu destino"}</button>`;
 }
 function pick(){
   const isFrom=S.picking==="from";
-  const title = S.saveAs ? `Guarda tu ${S.saveAs}` : isFrom ? "¿Dónde te recogemos?" : "¿A dónde vas?";
+  const title = S.saveAs ? `Guarda tu ${S.saveAs}` : isFrom ? "¿Dónde te recogemos?" : S.picking==="stop" ? "Agrega una parada" : "¿A dónde vas?";
   return `<div class="grab"></div>
   <h2>${title}</h2>
   <div class="search"><input id="q" class="inp" type="search" placeholder="Busca calle, lugar o urbanización" autocomplete="off" enterkeyhint="search"></div>
   <div class="results">${S.results.map((x,i)=>`<button data-res="${i}"><strong>${esc(x.name)}</strong><span>${esc(x.sub)}</span></button>`).join("")}</div>
   ${isFrom&&S.gps?`<button class="ghost" id="useGps">📍 Usar mi ubicación actual</button>`:""}
-  ${!isFrom&&!S.saveAs?quick():""}
+  ${S.picking==="to"&&!S.saveAs?quick():""}
   <p class="hint">O mueve el mapa y deja el pin en el punto exacto:</p>
-  <div class="field" style="grid-template-columns:14px 1fr"><span class="dot ${isFrom?"a":"b"}"></span><span class="txt"><span id="pickName">${esc(S.pickName)}</span></span></div>
+  <div class="field" style="grid-template-columns:14px 1fr"><span class="dot ${isFrom?"a":S.picking==="stop"?"c":"b"}"></span><span class="txt"><span id="pickName">${esc(S.pickName)}</span></span></div>
   <div class="row nw"><button class="ghost" id="pickCancel">Volver</button><button class="cta" id="pickOk">Confirmar</button></div>`;
 }
 function offers(){
@@ -518,8 +591,8 @@ function offers(){
   <div class="searching"><span class="pulse"></span>${S.offers.length?"Elige la oferta que más te convenga":"Enviando a motorizados cercanos…"}</div>
   ${S.offers.map((o,i)=>`
   <div class="offer ${isFav(o.d)?"fav":""}">
-    <div class="av" style="background:${o.d.c}">${o.d.n[0]}</div>
-    <div class="who"><strong>${o.d.n} · ★ ${o.d.r}</strong><span>${o.d.moto} · llega en ${o.eta} min</span>
+    <button class="av" data-prof="${i}" aria-label="Ver perfil de ${o.d.n}" style="background:${o.d.c}">${o.d.n[0]}</button>
+    <div class="who"><strong>${o.d.n} · ★ ${o.d.r}</strong><span>${o.d.moto} · llega en ${o.eta} min · <button class="link" style="display:inline;padding:0;font-size:.78rem" data-prof="${i}">Ver perfil</button></span>
       <div>${isFav(o.d)?`<span class="tag pk">❤️ Tu favorito</span> `:""}${o.d.g==="f"?`<span class="tag pk">Motorizada</span>`:""}</div></div>
     <div class="amt"><strong>${show(o.usd)}</strong><span>${other(o.usd)}</span>
       <div><span class="tag ${o.usd===S.usd?"same":"up"}">${o.usd===S.usd?"Acepta tu precio":"Contraoferta"}</span></div></div>
@@ -578,10 +651,12 @@ function done(){
   return `<div class="grab"></div>
   <h2>${S.svc==="encomienda"?"¡Encomienda entregada! 📦":"¡Llegaste! 🎉"}</h2>
   ${S.svc==="encomienda"?`<div class="proof"><div class="ph">${proofSvg()}</div><div><strong>Prueba de entrega</strong><span>Recibió: ${esc(S.recv.name||"Destinatario")}</span><span>${t} · ${esc(S.to.name)}</span><span>Foto tomada por ${o.d.n}</span></div></div>`:""}
-  <div class="sum"><span>Total</span><span>${fmtUSD(o.usd)}</span><span>En bolívares</span><span>${fmtBs(o.usd*RATE)}</span><span>Distancia</span><span>${S.route.km.toFixed(1)} km</span></div>
+  ${(()=>{ const tot=o.usd+S.tip-S.discount; return `<div class="sum"><span>Viaje</span><span>${fmtUSD(o.usd)}</span>${S.discount?`<span>Descuento por invitar</span><span>−${fmtUSD(S.discount)}</span>`:""}${S.tip?`<span>Propina</span><span>${fmtUSD(S.tip)}</span>`:""}<span><b>Total</b></span><span>${fmtUSD(tot)}</span><span>En bolívares</span><span>${fmtBs(tot*RATE)}</span>`; })()}<span>Distancia</span><span>${S.route.km.toFixed(1)} km</span></div>
   <div class="note">${info}<br><em>Datos de pago de ejemplo.</em></div>
   <div class="lbl" style="text-align:center">Califica a ${o.d.n}</div>
   <div class="stars">${[1,2,3,4,5].map(n=>`<button data-star="${n}" class="${n<=S.stars?"on":""}" aria-label="${n} estrellas">★</button>`).join("")}</div>
+  <div class="lbl">Propina para ${o.d.n}</div>
+  <div class="row">${[0,.5,1,2].map(v=>`<button class="chip" data-tip="${v}" aria-pressed="${S.tip===v}">${v?fmtUSD(v):"Sin propina"}</button>`).join("")}</div>
   <button class="ghost" id="fav">${isFav(o.d)?"❤️ "+o.d.n+" es tu favorito":"🤍 Guardar a "+o.d.n+" como favorito"}</button>
   <button class="cta" id="again">Pedir otra moto</button>`;
 }
@@ -620,11 +695,11 @@ let lastView="";
 function render(){
   $("#m-pas").setAttribute("aria-pressed",S.mode==="pas");
   $("#m-con").setAttribute("aria-pressed",S.mode==="con");
-  const view = S.mode+"|"+(S.picking?"pick":S.step);
+  const view = S.mode+"|"+(S.overlay||"")+"|"+(S.picking?"pick":S.step)+"|"+(S.dreg?.step||"")+(S.reg?.step||"")+(SAVED.driver?.status||"");
   if(view!==lastView){ sheet.style.height=""; sheet.style.maxHeight=""; sheet.scrollTop=0; lastView=view; }
   const scroll=sheet.scrollTop;
   const a=document.activeElement, keep=a&&a.id&&sheet.contains(a)?{id:a.id,s:a.selectionStart}:null;
-  sheet.innerHTML = S.mode==="con" ? driver() : S.picking ? pick() : ({home,offers,trip,done})[S.step]();
+  sheet.innerHTML = S.overlay ? OV[S.overlay]() : S.mode==="con" ? conView() : S.picking ? pick() : ({home,offers,trip,done,scheduled})[S.step]();
   sheet.scrollTop=scroll;
   if(keep){ const el=document.getElementById(keep.id); if(el){ el.focus({preventScroll:true}); try{ el.setSelectionRange(keep.s,keep.s); }catch{} } }
   drawLayers();
@@ -684,7 +759,7 @@ function startTrip(o){
     const bar=$(".bar i"); if(bar) bar.style.width=Math.round(S.prog*100)+"%";
     const st=$(".status"), txt=trip().match(/<div class="status">(.*?)<\/div>/)[1];
     if(st && txt!==lastTxt){ st.innerHTML=txt; lastTxt=txt; }
-    if(S.prog<1) later(tick,400); else later(()=>{ S.step="done"; S.doneAt=Date.now(); render(); },900);
+    if(S.prog<1) later(tick,400); else later(finishTrip,900);
   };
   later(tick,600);
 }
@@ -768,7 +843,423 @@ addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; if
 addEventListener("appinstalled",()=>{ installEvt=null; toast("¡Pana Moto quedó instalada!"); render(); });
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
 
+/* ================= Cuentas, billetera y administrador (demo) ================= */
+SAVED.user = store.get("user", null);
+SAVED.history = store.get("history", []);
+SAVED.credit = store.get("credit", 0);
+SAVED.redeemed = store.get("redeemed", false);
+SAVED.driver = store.get("driver", null);
+SAVED.admin = store.get("admin", {promo:true, com:0.10});
+SAVED.recargas = store.get("recargas", []);
+const save = k => store.set(k, SAVED[k]);
+const comRate = () => SAVED.admin.com;
+const DAY = 864e5;
+Object.assign(S,{overlay:null, reg:null, dreg:null, docThumbs:{}, stops:[], whenMode:"now", when:"", tip:0, discount:0,
+  profile:null, demand:true, recAmt:5, recMethod:"Pago Móvil", planSel:null, taken:[], afterReg:null});
+const ADMIN_PENDING=[
+  {n:"Jhonny V.",  ci:"V-24.118.552", moto:"Bera SBR 150 · AH2K77L",   sex:"Hombre"},
+  {n:"Rosmary L.", ci:"V-27.903.114", moto:"Empire Owen 150 · AJ5P20T", sex:"Mujer"}
+];
+const REVIEWS=["Muy puntual y manejó con cuidado.","Llevaba casco extra limpio. Recomendado.","Conoce bien las rutas, llegamos rápido.",
+  "Amable y respetuoso, 10 de 10.","Me esperó mientras bajaba sin problema.","Tenía sencillo para el vuelto, excelente."];
+const DOCS=[["cedula","Cédula (frente)"],["selfie","Selfie con tu cédula"],["licencia","Licencia de conducir"],
+  ["carnet","Carnet de circulación"],["rcv","Seguro RCV vigente"],["antecedentes","Antecedentes penales (opcional)"]];
+const REQUIRED_DOCS=["cedula","selfie","licencia","carnet","rcv"];
+const digits = s => String(s||"").replace(/\D/g,"");
+const fmtDate = ts => new Date(ts).toLocaleString("es-VE",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+const localISO = ts => new Date(ts - new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
+const firstName = n => String(n||"").trim().split(/\s+/)[0];
+function makeCode(name){ return "PANA-"+((name.normalize("NFD").replace(/[^A-Za-z]/g,"").toUpperCase().slice(0,4))||"AMIG")+(10+Math.floor(Math.random()*90)); }
+const newCode = () => String(1000+Math.floor(Math.random()*9000));
+function wizBar(steps,cur){ return `<ol class="wiz" aria-label="Paso ${cur} de ${steps.length}">${steps.map((s,i)=>`<li class="${i+1<cur?"ok":i+1===cur?"on":""}">${s}</li>`).join("")}</ol>`; }
+const closeBtn = (label="Cerrar") => `<button class="x" data-close aria-label="${label}">✕</button>`;
+
+/* ---------- Plan y comisión del motorizado ---------- */
+const promoOn = d => SAVED.admin.promo && d.promoUntil > Date.now();
+const weekOn  = d => d.weekUntil > Date.now();
+const tripCom = (d,usd) => promoOn(d)||weekOn(d) ? 0 : +(usd*comRate()).toFixed(2);
+function planCards(sel){
+  const pc=Math.round(comRate()*100), n=Math.ceil(5/(2.5*comRate()));
+  return `<div class="plans">
+    <button class="plan" data-plan="pct" aria-pressed="${sel==="pct"}"><b>${pc}% por viaje</b><small>Pagas solo cuando trabajas. Ideal si haces pocos viajes.</small></button>
+    <button class="plan" data-plan="week" aria-pressed="${sel==="week"}"><b>$5 a la semana</b><small>Viajes ilimitados sin comisión. Conviene si haces más de ${n} viajes por semana.</small></button>
+  </div>`;
+}
+
+/* ================= Pantallas superpuestas ================= */
+const OV={};
+OV.menu = () => `<div class="grab"></div>
+  <div class="ovhead"><h2>${SAVED.user?esc(SAVED.user.name):"Tu cuenta"}</h2>${closeBtn()}</div>
+  ${SAVED.user?`<p class="hint">${esc(SAVED.user.phone)} · Tu código: <b>${SAVED.user.code}</b></p>`:`<button class="cta" data-ov="regpas">Crear mi cuenta</button>`}
+  <div class="list">
+    <button data-ov="history">🧾 Mis viajes<span>${SAVED.history.length||""}</span></button>
+    <button data-ov="invite">🎁 Invita a un pana<span>${SAVED.credit?fmtUSD(SAVED.credit)+" de saldo":"Gana $1"}</span></button>
+    <button data-ov="sos">🚨 Contacto de emergencia<span>${SAVED.sos?esc(SAVED.sos.name):"Sin configurar"}</span></button>
+    <button data-ov="admin">🛠️ Panel de administrador<span>Demo</span></button>
+    ${SAVED.user?`<button id="logout">🚪 Cerrar sesión<span></span></button>`:""}
+  </div>
+  <p class="hint">Prototipo: tus datos se guardan solo en este celular.</p>`;
+
+OV.regpas = () => {
+  const r = S.reg || (S.reg={step:1,phone:"",sent:"",name:""});
+  let b;
+  if(r.step===1) b=`<p class="hint">Pide motos y pon tu precio. Solo necesitamos tu número.</p>
+    <label class="lbl" for="rp-phone">Tu número de teléfono</label>
+    <input id="rp-phone" class="inp" inputmode="tel" placeholder="0412-1234567" value="${esc(r.phone)}" autocomplete="tel">
+    <button class="cta" id="rp-send">Enviar código por WhatsApp</button>`;
+  else if(r.step===2) b=`<p class="hint">Enviamos un código de 4 dígitos al <b>${esc(r.phone)}</b> por WhatsApp.</p>
+    <p class="demo">Demo: tu código es <b>${r.sent}</b></p>
+    <input id="rp-code" class="inp code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="one-time-code">
+    <button class="cta" id="rp-verify">Verificar</button><button class="link" id="rp-back">Cambiar número</button>`;
+  else b=`<label class="lbl" for="rp-name">¿Cómo te llamas?</label>
+    <input id="rp-name" class="inp" placeholder="Nombre y apellido" value="${esc(r.name)}" autocomplete="name">
+    <button class="cta" id="rp-done">Empezar a pedir motos</button>`;
+  return `<div class="grab"></div><div class="ovhead"><h2>Crea tu cuenta</h2>${closeBtn()}</div>
+    ${wizBar(["Teléfono","Código","Nombre"],r.step)}${b}
+    ${r.step===1?`<button class="link" id="rp-skip">Explorar sin registrarme</button>`:""}`;
+};
+
+OV.sos = () => `<div class="grab"></div><div class="ovhead"><h2>Contacto de emergencia</h2>${closeBtn()}</div>
+  <p class="hint">Si presionas el botón de pánico durante un viaje, esta persona recibe tu ubicación por WhatsApp.</p>
+  ${SAVED.sos?`<div class="mix"><span>${esc(SAVED.sos.name)}</span><b>${esc(SAVED.sos.phone)}</b></div>`:""}
+  <div class="grid2"><input id="sosName" class="inp" placeholder="Nombre" autocomplete="off"><input id="sosPhone" class="inp" placeholder="0412-0000000" inputmode="tel" autocomplete="off"></div>
+  <button class="cta" id="sosSave">${SAVED.sos?"Cambiar contacto":"Guardar contacto"}</button>`;
+
+OV.history = () => `<div class="grab"></div><div class="ovhead"><h2>Mis viajes</h2>${closeBtn()}</div>
+  ${SAVED.history.length ? SAVED.history.map((h,i)=>`<div class="hist">
+    <div class="top"><strong>${esc(short(h.from.name,18))} → ${esc(short(h.to.name,18))}</strong><b>${fmtUSD(h.total)}</b></div>
+    <span class="hint">${h.sched?`🕐 Programado para ${fmtDate(h.when)}`:`${fmtDate(h.ts)} · ${esc(h.driver)} · ${"★".repeat(h.stars||5)}`}${h.svc==="encomienda"?" · 📦 Encomienda":""}${h.stops?.length?` · ${h.stops.length} parada${h.stops.length>1?"s":""}`:""}${h.tip?` · propina ${fmtUSD(h.tip)}`:""}</span>
+    ${h.sched?`<button class="ghost" data-hcancel="${i}">Cancelar viaje programado</button>`:`<button class="ghost" data-repeat="${i}">↻ Repetir viaje</button>`}
+  </div>`).join("") : `<p class="hint">Aquí aparecerán tus viajes. Pide tu primera moto y la verás en esta lista.</p>`}`;
+
+OV.invite = () => {
+  if(!SAVED.user){ S.overlay="regpas"; return OV.regpas(); }
+  const link=location.href.split("#")[0];
+  const msg=`¡Pide tu moto con Pana Moto y pon tu precio! Usa mi código ${SAVED.user.code} y los dos ganamos $1 de descuento: ${link}`;
+  return `<div class="grab"></div><div class="ovhead"><h2>Invita a un pana</h2>${closeBtn()}</div>
+  <p class="hint">Cuando tu pana haga su primer viaje con tu código, <b>los dos ganan $1</b> de descuento.</p>
+  <div class="codebox"><small>Tu código</small><b>${SAVED.user.code}</b><button class="ghost" id="copyCode">Copiar</button></div>
+  <a class="cta" style="display:block;text-align:center;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+  <div class="mix"><span>Tu saldo de descuento</span><b>${fmtUSD(SAVED.credit)}</b></div>
+  ${SAVED.redeemed?`<p class="hint">Ya usaste un código de invitación.</p>`:`<div class="lbl">¿Te invitó alguien?</div>
+  <div class="search"><input id="redeem" class="inp" placeholder="PANA-XXXX00" style="text-transform:uppercase" autocomplete="off"><button class="ghost" id="redeemBtn" style="width:auto">Usar</button></div>`}`;
+};
+
+OV.profile = () => {
+  const d=S.profile, k=d.n.length;
+  const revs=[0,1,2].map(i=>REVIEWS[(k+i*2)%REVIEWS.length]);
+  return `<div class="grab"></div><div class="ovhead"><h2>Perfil del motorizado</h2>${closeBtn("Volver")}</div>
+  <div class="driver"><div class="av" style="background:${d.c}">${d.n[0]}</div>
+    <div><strong>${d.n}</strong>${d.g==="f"?` <span class="tag pk">Motorizada</span>`:""}<br><span class="hint">★ ${d.r} · ${d.v} viajes${isFav(d)?" · ❤️ Tu favorito":""}</span></div>
+    <span class="plate">${d.plate}</span></div>
+  <div class="mopic"><div class="mp" style="background:${d.c}">${MOTO_SVG.replace('width="20" height="20"','width="48" height="48"')}</div><div><b>${d.moto}</b><small>Lleva casco extra para el pasajero</small></div></div>
+  <div class="lbl">Verificado por Pana Moto</div>
+  <div class="checks">${["Cédula","Licencia vigente","Seguro RCV","Antecedentes"].map(x=>`<div><span>✓</span>${x}</div>`).join("")}</div>
+  <div class="lbl">Reseñas recientes</div>
+  ${revs.map(r=>`<div class="review"><span>★★★★★</span>${r}</div>`).join("")}
+  <button class="cta" data-close>Volver a las ofertas</button>`;
+};
+
+OV.recarga = () => `<div class="grab"></div><div class="ovhead"><h2>Recargar saldo</h2>${closeBtn()}</div>
+  <p class="hint">Tu saldo se usa para pagar la comisión de cada viaje.</p>
+  <div class="lbl">Monto</div>
+  <div class="row">${[2,5,10,20].map(a=>`<button class="chip" data-ramt="${a}" aria-pressed="${S.recAmt===a}">$${a}</button>`).join("")}</div>
+  <p class="hint">≈ ${fmtBs(S.recAmt*RATE)}</p>
+  <div class="lbl">Método</div>
+  <div class="row">${["Pago Móvil","Binance USDT"].map(m=>`<button class="chip" data-rmet="${m}" aria-pressed="${S.recMethod===m}">${m}</button>`).join("")}</div>
+  <div class="note">${S.recMethod==="Pago Móvil"?`Paga <b>${fmtBs(S.recAmt*RATE)}</b> a Pana Moto: Banco de Venezuela · 0412-000-0000 · J-00000000-0`:`Envía <b>${S.recAmt} USDT</b> a Pana Moto, Binance Pay ID 0000 0000`}<br><em>Datos de ejemplo.</em></div>
+  <label class="lbl" for="rref">Número de referencia</label>
+  <input id="rref" class="inp" inputmode="numeric" placeholder="Últimos 6 dígitos" autocomplete="off">
+  <button class="cta" id="rsend">Reportar pago</button>`;
+
+OV.plan = () => { const d=SAVED.driver, sel=S.planSel||d.plan;
+  return `<div class="grab"></div><div class="ovhead"><h2>Mi plan</h2>${closeBtn()}</div>
+  ${promoOn(d)?`<div class="promo">🎉 Estás en tu mes sin comisión hasta el ${fmtDate(d.promoUntil)}. Tu plan se aplica después.</div>`:""}
+  ${weekOn(d)?`<div class="promo">✅ Plan semanal activo hasta el ${fmtDate(d.weekUntil)}.</div>`:""}
+  ${planCards(sel)}
+  <p class="hint">El plan semanal se cobra de tu saldo ($5) al activarlo.</p>
+  <button class="cta" id="planSave">Guardar plan</button>`; };
+
+OV.admin = () => {
+  const d=SAVED.driver;
+  const pend=[...(d&&d.status==="pending"?[{own:true,n:d.name,ci:d.ci,moto:`${d.model} · ${d.plate.toUpperCase()}`,sex:d.sex,docs:d.docs.length}]:[]),
+    ...ADMIN_PENDING.map((p,i)=>({...p,idx:i,docs:7}))];
+  const com=(d?.trips||[]).reduce((a,t)=>a+t.com,0)+38.4;
+  return `<div class="grab"></div><div class="ovhead"><h2>Panel de administrador</h2>${closeBtn()}</div>
+  <div class="earn"><div><small>Viajes hoy</small><b>${128+SAVED.history.length+(d?.trips?.length||0)}</b></div><div><small>Comisiones</small><b>${fmtUSD(com)}</b></div><div><small>Motorizados</small><b>${46+(d?.status==="approved"?1:0)}</b></div></div>
+  <div class="lbl">Motorizados por aprobar (${pend.length})</div>
+  ${pend.length?pend.map(p=>`<div class="req">
+    <div class="top"><strong>${esc(p.n)}${p.own?" (tú)":""}</strong><span class="hint">${esc(p.sex)}</span></div>
+    <div class="route">${esc(p.ci)} · ${esc(p.moto)}<br>Documentos y fotos: ${p.docs}/7 ✓</div>
+    <div class="ctr"><button class="acc" data-approve="${p.own?"own":p.idx}">Aprobar</button><button data-reject="${p.own?"own":p.idx}">Rechazar</button></div>
+  </div>`).join(""):`<p class="hint">No hay registros pendientes.</p>`}
+  <div class="lbl">Configuración</div>
+  <button class="toggle green" id="adm-promo" aria-pressed="${SAVED.admin.promo}"><span>Primer mes sin comisión<small>Para motorizados nuevos</small></span><i></i></button>
+  <div class="mix"><span>Comisión por viaje</span><div class="stepper sm"><button id="adm-cm" aria-label="Bajar comisión">−</button><output>${Math.round(comRate()*100)}%</output><button id="adm-cp" aria-label="Subir comisión">+</button></div></div>
+  <div class="lbl">Recargas recientes</div>
+  ${SAVED.recargas.length?SAVED.recargas.slice(0,5).map(r=>`<div class="hrow"><span>${esc(r.name)} · ${r.method}<small>${fmtDate(r.ts)} · Ref. ${esc(r.ref)}</small></span><b>${fmtUSD(r.amt)}</b></div>`).join(""):`<p class="hint">Aún no hay recargas.</p>`}
+  <p class="hint">Cifras de ejemplo, excepto tus propios registros y recargas.</p>`;
+};
+
+/* ================= Motorizado: registro, revisión y panel ================= */
+function docRow(k,label){
+  const ok=S.dreg.docs[k], th=S.docThumbs[k];
+  return `<label class="doc ${ok?"ok":""}" for="f-${k}"><span class="th">${th?`<img src="${th}" alt="">`:"📷"}</span>
+    <span><b>${label}</b><small>${ok?esc(ok):"Toca para tomar o subir la foto"}</small></span><span class="st">${ok?"✓":"Subir"}</span>
+    <input id="f-${k}" type="file" accept="image/*" data-doc="${k}" class="vh"></label>`;
+}
+function dregView(){
+  const r = S.dreg || (S.dreg={step:1,phone:"",sent:"",name:"",ci:"",sex:"",docs:{},model:"",plate:"",bank:"",payPhone:"",payCi:"",plan:"pct"});
+  let b="";
+  if(r.step===1) b = r.sent ? `<p class="hint">Enviamos un código al <b>${esc(r.phone)}</b> por WhatsApp.</p><p class="demo">Demo: tu código es <b>${r.sent}</b></p>
+      <input id="dr-code" class="inp code" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="one-time-code">
+      <button class="cta" id="dr-verify">Verificar</button><button class="link" id="dr-rephone">Cambiar número</button>`
+    : `<p class="hint">Gana dinero con tu moto. El registro toma unos 5 minutos y lo revisamos en menos de 24 horas.</p>
+      <label class="lbl" for="dr-phone">Tu número de teléfono</label>
+      <input id="dr-phone" class="inp" inputmode="tel" placeholder="0412-1234567" value="${esc(r.phone)}" autocomplete="tel">
+      <button class="cta" id="dr-send">Enviar código por WhatsApp</button>`;
+  if(r.step===2) b=`<input id="dr-name" class="inp" placeholder="Nombre y apellido" value="${esc(r.name)}" autocomplete="name">
+    <input id="dr-ci" class="inp" placeholder="Cédula (V-12.345.678)" value="${esc(r.ci)}" autocomplete="off">
+    <div class="lbl">Sexo</div><div class="row">${["Hombre","Mujer"].map(x=>`<button class="chip" data-sex="${x}" aria-pressed="${r.sex===x}">${x}</button>`).join("")}</div>
+    <p class="hint">Las motorizadas también reciben los viajes de pasajeras que eligen "Prefiero motorizada".</p>
+    <button class="cta" id="dr-next">Continuar</button>`;
+  if(r.step===3) b=`<p class="hint">Fotos claras, completas y sin reflejos.</p><div class="docs">${DOCS.map(([k,l])=>docRow(k,l)).join("")}</div>
+    <button class="cta" id="dr-next">Continuar (${REQUIRED_DOCS.filter(k=>r.docs[k]).length}/${REQUIRED_DOCS.length} obligatorios)</button>`;
+  if(r.step===4) b=`<input id="dr-model" class="inp" placeholder="Marca y modelo (Bera SBR 150)" value="${esc(r.model)}" autocomplete="off">
+    <input id="dr-plate" class="inp" placeholder="Placa (AB1C23D)" value="${esc(r.plate)}" style="text-transform:uppercase" autocomplete="off">
+    <div class="docs">${docRow("moto","Foto de la moto con la placa visible")}</div>
+    <div class="note">🪖 Lleva siempre un casco extra para tu pasajero.</div><button class="cta" id="dr-next">Continuar</button>`;
+  if(r.step===5) b=`<p class="hint">Los pasajeros te pagan directo a ti. Estos datos se les muestran al terminar el viaje.</p>
+    <input id="dr-bank" class="inp" placeholder="Banco (Banco de Venezuela)" value="${esc(r.bank)}" autocomplete="off">
+    <div class="grid2"><input id="dr-payPhone" class="inp" inputmode="tel" placeholder="Teléfono Pago Móvil" value="${esc(r.payPhone)}" autocomplete="off">
+    <input id="dr-payCi" class="inp" placeholder="Cédula" value="${esc(r.payCi)}" autocomplete="off"></div>
+    <button class="cta" id="dr-next">Continuar</button>`;
+  if(r.step===6) b=`${planCards(r.plan)}<div class="promo">🎉 <b>Tu primer mes es sin comisión.</b> Después se aplica el plan que elijas, y puedes cambiarlo cuando quieras.</div>
+    <button class="cta" id="dr-finish">Enviar registro</button>`;
+  return `<div class="grab"></div><h2>Regístrate como motorizado</h2>
+    ${wizBar(["Teléfono","Datos","Documentos","Moto","Cobro","Plan"],r.step)}${b}
+    ${r.step>1?`<button class="link" id="dr-prev">← Atrás</button>`:""}`;
+}
+function pendingView(){
+  const d=SAVED.driver;
+  return `<div class="grab"></div><h2>Tu registro está en revisión ⏳</h2>
+  <p class="hint">Hola ${esc(firstName(d.name))}, revisamos tus documentos en menos de 24 horas y te avisamos por WhatsApp al ${esc(d.phone)}.</p>
+  <div class="checks">${DOCS.concat([["moto","Foto de la moto"]]).map(([k,l])=>`<div><span>${d.docs.includes(k)?"✓":"—"}</span>${l.replace(" (opcional)","")}</div>`).join("")}</div>
+  <div class="note">Moto: ${esc(d.model)} · ${esc(d.plate.toUpperCase())}<br>Plan: ${d.plan==="week"?"$5 a la semana":Math.round(comRate()*100)+"% por viaje"} · Primer mes sin comisión</div>
+  <button class="cta" data-ov="admin">Abrir panel de administrador (demo)</button>
+  <button class="link" id="dr-reset">Borrar registro y empezar de nuevo</button>`;
+}
+function rejectedView(){
+  return `<div class="grab"></div><h2>Registro no aprobado</h2>
+  <p class="hint">Alguno de tus documentos no se pudo verificar. Revisa que las fotos sean claras y vuelve a enviar tu registro.</p>
+  <button class="cta" id="dr-reset">Volver a registrarme</button>`;
+}
+function weekChart(d){
+  const names=["D","L","M","M","J","V","S"], sample=[11.5,14,9.5,17,20.5,13], out=[];
+  for(let i=6;i>=0;i--){
+    const day=new Date(Date.now()-i*DAY), ds=day.toDateString();
+    const real=d.trips.filter(t=>new Date(t.ts).toDateString()===ds).reduce((a,t)=>a+t.usd-t.com,0);
+    out.push({l:names[day.getDay()], v:i===0?real:(real||sample[6-i]), today:i===0});
+  }
+  const max=Math.max(5,...out.map(o=>o.v)), tot=out.reduce((a,o)=>a+o.v,0);
+  return `<div class="chart"><div class="ch-head"><span class="lbl">Ganancia de la semana</span><b>${show(tot,dCur)}</b></div>
+    <div class="bars">${out.map(o=>`<div class="b ${o.today?"t":""}"><span style="height:${Math.max(3,Math.round(o.v/max*100))}%" title="${show(o.v,dCur)}"></span><small>${o.today?"Hoy":o.l}</small></div>`).join("")}</div>
+    <p class="hint">Días anteriores con datos de ejemplo.</p></div>`;
+}
+function dashView(){
+  const d=SAVED.driver, today=new Date().toDateString();
+  const tt=d.trips.filter(t=>new Date(t.ts).toDateString()===today);
+  const gross=tt.reduce((a,t)=>a+t.usd,0), com=tt.reduce((a,t)=>a+t.com,0);
+  const days=Math.max(0,Math.ceil((d.promoUntil-Date.now())/DAY));
+  const low=!promoOn(d)&&!weekOn(d)&&d.balance<0.5;
+  const reqs=REQS.map((r,i)=>({...r,i})).filter(r=>!S.taken.includes(r.i));
+  return `<div class="grab"></div>
+  <button class="toggle green" id="online" aria-pressed="${S.online}"><span>${S.online?"🟢 Estás disponible":"⚪ Estás desconectado"}<small>${S.online?"Recibes solicitudes cerca de ti":"Actívate para recibir solicitudes"}</small></span><i></i></button>
+  <div class="wallet ${low?"low":""}"><div><small>Saldo para comisiones</small><b>${fmtUSD(d.balance)}</b>
+    <span>${promoOn(d)?`🎉 Sin comisión ${days} días más`:weekOn(d)?`Plan semanal hasta ${fmtDate(d.weekUntil)}`:`Plan: ${Math.round(comRate()*100)}% por viaje`}</span></div>
+    <div class="wbtn"><button class="cta" data-ov="recarga">Recargar</button><button class="ghost" data-ov="plan">Mi plan</button></div></div>
+  ${low?`<div class="alert">Recarga saldo para seguir aceptando viajes.</div>`:""}
+  <div class="row" style="justify-content:space-between;align-items:center"><span class="lbl">Hoy</span>
+    <div class="cur"><button data-dcur="USD" aria-pressed="${dCur==="USD"}">$</button><button data-dcur="VES" aria-pressed="${dCur==="VES"}">Bs</button></div></div>
+  <div class="earn"><div><small>Cobrado</small><b>${show(gross,dCur)}</b></div><div><small>Comisión</small><b>−${show(com,dCur)}</b></div><div><small>Viajes</small><b>${tt.length}</b></div></div>
+  ${weekChart(d)}
+  <button class="toggle green" id="demand" aria-pressed="${S.demand}"><span>🔥 Zonas de alta demanda<small>Marcadas en el mapa para que sepas dónde ubicarte</small></span><i></i></button>
+  ${S.online?`<h2>Solicitudes cerca de ti</h2>
+  ${reqs.length?reqs.map(r=>{ const c=tripCom(d,r.usd); return `<div class="req">
+    <div class="top"><strong>${r.pas} · ${r.svc}</strong><span class="hint">a ${r.min} min</span></div>
+    <div class="route"><b>${r.from}</b> → <b>${r.to}</b> · ${r.km} km · ${r.pay}${r.women?` <span class="tag pk">Pide motorizada</span>`:""}</div>
+    <div class="top"><span class="amt">${show(r.usd,dCur)}</span><span class="hint">${c?`Comisión ${show(c,dCur)} · `:"Sin comisión · "}Ganas <b>${show(r.usd-c,dCur)}</b></span></div>
+    <div class="ctr"><button class="acc" data-take="${r.i}">Aceptar</button>
+      <button data-counter="${r.i}" data-plus="0.5">+${dCur==="USD"?"$0.50":"Bs "+(.5*RATE).toFixed(0)}</button>
+      <button data-counter="${r.i}" data-plus="1">+${dCur==="USD"?"$1":"Bs "+RATE.toFixed(0)}</button></div></div>`; }).join("")
+  :`<div class="searching"><span class="pulse"></span>Buscando nuevas solicitudes…</div>`}`
+  :`<p class="hint">Mientras estés desconectado no recibes solicitudes.</p>`}
+  <div class="note">La comisión se descuenta de tu saldo al aceptar. El pasajero te paga el viaje completo directo a ti. Solicitudes de ejemplo.</div>`;
+}
+function conView(){
+  const d=SAVED.driver;
+  if(!d) return dregView();
+  if(d.status==="pending") return pendingView();
+  if(d.status==="rejected") return rejectedView();
+  return dashView();
+}
+
+/* ================= Pasajero: viaje programado y fin de viaje ================= */
+function scheduled(){
+  const h=SAVED.history[0];
+  return `<div class="grab"></div><h2>¡Viaje programado! 🕐</h2>
+  <div class="sum"><span>Fecha</span><span>${fmtDate(h.when)}</span><span>Ruta</span><span>${esc(short(h.from.name,16))} → ${esc(short(h.to.name,16))}</span>
+    <span>Tu oferta</span><span>${show(h.usd)}</span><span>Pago</span><span>${esc(paySplit(h.usd))}</span></div>
+  <div class="note">15 minutos antes enviaremos tu oferta a los motorizados cercanos y te avisaremos cuando uno acepte.</div>
+  <button class="ghost" data-ov="history">Ver mis viajes</button><button class="cta" id="again">Listo</button>`;
+}
+function finishTrip(){
+  const o=S.chosen;
+  S.step="done"; S.doneAt=Date.now(); S.tip=0;
+  S.discount=Math.min(SAVED.credit,o.usd);
+  if(S.discount){ SAVED.credit=+(SAVED.credit-S.discount).toFixed(2); save("credit"); }
+  SAVED.history.unshift({ts:S.doneAt, from:S.from, to:S.to, stops:[...S.stops], svc:S.svc, driver:o.d.n, usd:o.usd, tip:0,
+    discount:S.discount, total:+(o.usd-S.discount).toFixed(2), stars:5});
+  SAVED.history=SAVED.history.slice(0,30); save("history");
+  render();
+}
+function updLastTrip(){ const h=SAVED.history[0]; if(!h||h.sched) return; h.tip=S.tip; h.stars=S.stars; h.total=+(h.usd+h.tip-h.discount).toFixed(2); save("history"); }
+
+/* ================= Paradas y zonas de demanda en el mapa ================= */
+let stopMks=[], demandLys=[];
+function drawExtra(){
+  stopMks.forEach(m=>m.remove()); stopMks=[];
+  if(S.mode==="pas" && !S.picking) S.stops.forEach(s=>stopMks.push(L.marker(s,{icon:ptIcon("#e8891a")}).addTo(map)));
+  const showD = S.mode==="con" && SAVED.driver?.status==="approved" && S.demand && S.online && !S.overlay;
+  if(!showD){ demandLys.forEach(l=>l.remove()); demandLys=[]; }
+  else if(!demandLys.length){
+    const c=S.gps||S.from||CARACAS;
+    [[.004,.003,520,"Alta demanda"],[-.005,.006,420,"Demanda media"],[.002,-.007,380,"Alta demanda"]].forEach(([a,b,r,t])=>{
+      const hi=t.startsWith("Alta");
+      demandLys.push(L.circle([c.lat+a,c.lng+b],{radius:r,color:hi?"#d6452f":"#e8b84a",weight:1,fillOpacity:.22,interactive:false})
+        .bindTooltip(t,{permanent:true,direction:"center",className:"dtip"}).addTo(map));
+    });
+  }
+}
+
+/* ================= Eventos de las nuevas pantallas ================= */
+document.addEventListener("input",e=>{
+  const id=e.target.id, v=e.target.value;
+  if(S.reg){ if(id==="rp-phone") S.reg.phone=v; if(id==="rp-name") S.reg.name=v; }
+  if(S.dreg){ const m=id.match(/^dr-(phone|name|ci|model|plate|bank|payPhone|payCi)$/); if(m) S.dreg[m[1]]=v; }
+  if(id==="when") S.when=v;
+});
+document.addEventListener("change",e=>{
+  const k=e.target.dataset?.doc, f=e.target.files?.[0];
+  if(k && f && S.dreg){ S.dreg.docs[k]=f.name; try{ S.docThumbs[k]=URL.createObjectURL(f); }catch{} render(); }
+});
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset, D=SAVED.driver; let handled=true;
+  const val = id => ($("#"+id)?.value||"").trim();
+
+  if(t.id==="menuBtn"){ S.overlay = S.overlay==="menu" ? null : "menu"; }
+  else if(t.hasAttribute("data-close")){ S.overlay = null; S.planSel=null; }
+  else if(d.ov){ S.overlay=d.ov; S.planSel=null; }
+  else if(t.id==="m-pas"||t.id==="m-con"){ S.overlay=null; handled=false; }
+
+  /* registro del pasajero */
+  else if(t.id==="rp-send"){ if(digits(S.reg.phone).length<10) return block("Escribe un número válido, por ejemplo 0412-1234567"); S.reg.sent=newCode(); S.reg.step=2; }
+  else if(t.id==="rp-verify"){ if(val("rp-code")!==S.reg.sent) return block("Código incorrecto. Revisa tu WhatsApp."); S.reg.step=3; }
+  else if(t.id==="rp-back"){ S.reg.step=1; }
+  else if(t.id==="rp-done"){ const n=S.reg.name.trim(); if(n.length<2) return block("Escribe tu nombre");
+    SAVED.user={name:n, phone:S.reg.phone, code:makeCode(n)}; save("user"); S.reg=null; S.overlay=null;
+    toast(`¡Bienvenido, ${firstName(n)}!${S.afterReg?" Ya puedes pedir tu moto.":""}`); S.afterReg=null; }
+  else if(t.id==="rp-skip"){ S.overlay=null; S.reg=null; }
+  else if(t.id==="logout"){ SAVED.user=null; save("user"); S.reg=null; S.overlay="regpas"; }
+
+  /* registro del motorizado */
+  else if(t.id==="dr-send"){ if(digits(S.dreg.phone).length<10) return block("Escribe un número válido, por ejemplo 0412-1234567"); S.dreg.sent=newCode(); }
+  else if(t.id==="dr-verify"){ if(val("dr-code")!==S.dreg.sent) return block("Código incorrecto. Revisa tu WhatsApp."); S.dreg.step=2; }
+  else if(t.id==="dr-rephone"){ S.dreg.sent=""; }
+  else if(d.sex){ S.dreg.sex=d.sex; }
+  else if(t.id==="dr-next"){ const r=S.dreg;
+    if(r.step===2 && (r.name.trim().length<3 || digits(r.ci).length<6 || !r.sex)) return block("Completa nombre, cédula y sexo");
+    if(r.step===3 && REQUIRED_DOCS.some(k=>!r.docs[k])) return block("Faltan fotos obligatorias");
+    if(r.step===4 && (!r.model.trim() || r.plate.trim().length<5 || !r.docs.moto)) return block("Completa modelo, placa y foto de la moto");
+    if(r.step===5 && (!r.bank.trim() || digits(r.payPhone).length<10)) return block("Completa banco y teléfono de Pago Móvil");
+    r.step++; sheet.scrollTop=0; }
+  else if(t.id==="dr-prev"){ S.dreg.step=Math.max(1,S.dreg.step-1); if(S.dreg.step===1) S.dreg.sent=""; }
+  else if(d.plan){ if(S.dreg && !D) S.dreg.plan=d.plan; else S.planSel=d.plan; }
+  else if(t.id==="dr-finish"){ const r=S.dreg, now=Date.now();
+    SAVED.driver={name:r.name.trim(), ci:r.ci.trim(), sex:r.sex, phone:r.phone, model:r.model.trim(), plate:r.plate.trim(),
+      docs:Object.keys(r.docs), bank:r.bank.trim(), payPhone:r.payPhone, payCi:r.payCi, plan:r.plan, status:"pending",
+      balance:0, weekUntil:0, promoUntil:now+30*DAY, trips:[], createdAt:now};
+    save("driver"); S.dreg=null; S.docThumbs={}; toast("Registro enviado. Te avisaremos por WhatsApp."); }
+  else if(t.id==="dr-reset"){ SAVED.driver=null; save("driver"); S.dreg=null; }
+
+  /* panel de administrador */
+  else if(d.approve!==undefined){
+    if(d.approve==="own"){ D.status="approved"; D.promoUntil=Date.now()+30*DAY; save("driver"); toast(`Aprobado: ${D.name}`); if(S.mode==="con") S.overlay=null; }
+    else { const p=ADMIN_PENDING.splice(+d.approve,1)[0]; toast(`Aprobado: ${p.n}`); } }
+  else if(d.reject!==undefined){
+    if(d.reject==="own"){ D.status="rejected"; save("driver"); toast(`Rechazado: ${D.name}`); }
+    else { const p=ADMIN_PENDING.splice(+d.reject,1)[0]; toast(`Rechazado: ${p.n}`); } }
+  else if(t.id==="adm-promo"){ SAVED.admin.promo=!SAVED.admin.promo; save("admin"); }
+  else if(t.id==="adm-cp"){ SAVED.admin.com=Math.min(.25,+(comRate()+.01).toFixed(2)); save("admin"); }
+  else if(t.id==="adm-cm"){ SAVED.admin.com=Math.max(.03,+(comRate()-.01).toFixed(2)); save("admin"); }
+
+  /* billetera */
+  else if(d.ramt){ S.recAmt=+d.ramt; }
+  else if(d.rmet){ S.recMethod=d.rmet; }
+  else if(t.id==="rsend"){ const ref=digits(val("rref")); if(ref.length<4) return block("Escribe la referencia del pago");
+    D.balance=+(D.balance+S.recAmt).toFixed(2); save("driver");
+    SAVED.recargas.unshift({ts:Date.now(), amt:S.recAmt, method:S.recMethod, ref, name:D.name}); SAVED.recargas=SAVED.recargas.slice(0,20); save("recargas");
+    S.overlay=null; toast(`Recarga de ${fmtUSD(S.recAmt)} aprobada (demo)`); }
+  else if(t.id==="planSave"){ const sel=S.planSel||D.plan;
+    if(sel==="week" && !weekOn(D) && !promoOn(D)){
+      if(D.balance<5){ S.overlay="recarga"; S.recAmt=5; render(); return block("Necesitas $5 de saldo para activar el plan semanal"); }
+      D.balance=+(D.balance-5).toFixed(2); D.weekUntil=Date.now()+7*DAY; toast("Plan semanal activado por 7 días"); }
+    else toast(sel==="week"&&promoOn(D)?"Plan semanal elegido. Se activa al terminar tu mes gratis.":"Plan guardado");
+    D.plan=sel; save("driver"); S.planSel=null; S.overlay=null; }
+  else if(d.take!==undefined && S.mode==="con" && D?.status==="approved"){
+    const r=REQS[+d.take], c=tripCom(D,r.usd);
+    if(D.balance<c){ S.overlay="recarga"; render(); return block("Saldo insuficiente para la comisión. Recarga para aceptar."); }
+    D.balance=+(D.balance-c).toFixed(2); D.trips.push({ts:Date.now(),usd:r.usd,com:c,pas:r.pas,to:r.to}); save("driver");
+    S.taken.push(+d.take); toast(`Aceptaste a ${r.pas}${c?` · comisión ${fmtUSD(c)}`:" · sin comisión"}`);
+    if(S.taken.length>=REQS.length) setTimeout(()=>{ S.taken=[]; if(S.mode==="con") render(); },6000); }
+  else if(t.id==="demand"){ S.demand=!S.demand; }
+
+  /* pasajero */
+  else if(d.prof!==undefined){ S.profile=S.offers[+d.prof].d; S.overlay="profile"; }
+  else if(t.id==="addStop"){ e.stopPropagation(); startPick("stop"); return; }
+  else if(d.delstop!==undefined){ S.stops.splice(+d.delstop,1); S.route=null; getRoute(); }
+  else if(d.when){ S.whenMode=d.when; if(d.when==="later" && !S.when) S.when=localISO(Date.now()+60*6e4); }
+  else if(t.id==="go"){
+    if(!SAVED.user){ S.overlay="regpas"; S.afterReg="go"; }
+    else if(S.whenMode==="later"){
+      const w=S.when?new Date(S.when).getTime():0;
+      if(!w || w<Date.now()+14*6e4) return block("Elige una hora al menos 15 minutos desde ahora");
+      if(S.svc==="encomienda" && !S.recv.name.trim()) return block("Escribe quién recibe la encomienda");
+      SAVED.history.unshift({sched:true, when:w, ts:Date.now(), from:S.from, to:S.to, stops:[...S.stops], svc:S.svc, usd:S.usd, total:S.usd, driver:"Por asignar"});
+      save("history"); S.step="scheduled"; }
+    else handled=false; }
+  else if(d.tip!==undefined){ S.tip=+d.tip; updLastTrip(); }
+  else if(d.star){ S.stars=+d.star; updLastTrip(); }
+  else if(t.id==="again"){ S.stops=[]; S.whenMode="now"; S.when=""; S.tip=0; S.discount=0; handled=false; }
+  else if(d.repeat!==undefined){ const h=SAVED.history[+d.repeat];
+    Object.assign(S,{from:h.from, to:h.to, stops:[...(h.stops||[])], svc:h.svc, overlay:null, step:"home", route:null, whenMode:"now"}); getRoute(); }
+  else if(d.hcancel!==undefined){ SAVED.history.splice(+d.hcancel,1); save("history"); toast("Viaje programado cancelado"); }
+  else if(t.id==="copyCode"){ const c=SAVED.user.code;
+    try{ navigator.clipboard.writeText(c).then(()=>toast("Código copiado"),()=>toast("Tu código: "+c)); }catch{ toast("Tu código: "+c); } }
+  else if(t.id==="redeemBtn"){ const c=val("redeem").toUpperCase();
+    if(!/^PANA-[A-Z]{1,4}\d{2}$/.test(c)) return block("Ese código no es válido");
+    if(c===SAVED.user.code) return block("No puedes usar tu propio código");
+    SAVED.credit=+(SAVED.credit+1).toFixed(2); SAVED.redeemed=true; save("credit"); save("redeemed"); toast("¡Ganaste $1! Se descuenta en tu próximo viaje."); }
+  else handled=false;
+
+  function block(msg){ e.stopPropagation(); e.preventDefault(); toast(msg); }
+  if(handled){ e.stopPropagation(); e.preventDefault(); render(); }
+},true);
+
 /* ================= Arranque ================= */
+if(!SAVED.user) S.overlay="regpas";
 netState();
 render();
 locate(true);
