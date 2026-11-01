@@ -252,6 +252,13 @@ button.av{border:0;cursor:pointer;flex:none}
 .adocs small{font-size:.66rem;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .bigdoc{display:flex;flex-direction:column;gap:8px}
 .bigdoc img{width:100%;max-height:60vh;object-fit:contain;border-radius:12px;background:var(--surface-2)}
+.chat{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:14px;padding:10px}
+.msgs{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
+.msg{align-self:flex-start;max-width:80%;background:var(--surface-2);border-radius:14px 14px 14px 4px;padding:7px 10px;font-size:.9rem;line-height:1.35;overflow-wrap:anywhere}
+.msg.mine{align-self:flex-end;background:var(--accent);color:#fff;border-radius:14px 14px 4px 14px}
+.msg small{display:block;font-size:.66rem;opacity:.7;margin-top:2px;text-align:right}
+.route{font-size:.88rem;line-height:1.5}
+.reqpin{background:#7b1e3a;color:#fff;font-weight:800;font-size:.78rem;padding:4px 8px;border-radius:12px;border:2px solid #f0c35a;box-shadow:0 2px 6px rgba(0,0,0,.35);text-align:center;white-space:nowrap}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -1459,6 +1466,362 @@ document.addEventListener("click",e=>{
   function block(msg){ e.stopPropagation(); e.preventDefault(); toast(msg); }
   if(handled){ e.stopPropagation(); e.preventDefault(); render(); }
 },true);
+
+/* ================= Fase 2: viajes en vivo con el servidor ================= */
+if(API){
+const PAL=["#1d3a8a","#b4532a","#16804a","#7a3fa0","#c2410c","#0f766e","#7b1e3a","#334155"];
+const dOf = r => ({id:r.id, n:r.name, first:r.first, c:PAL[r.id%PAL.length], moto:r.model, plate:r.plate, r:r.rating, v:r.trips,
+  g:r.sex==="Mujer"?"f":"m", bank:r.bank||"", payPhone:r.pay_phone||"", payCi:r.pay_ci||"", phone:r.phone||""});
+const pl = p => ({lat:+p.lat, lng:+p.lng, name:String(p.name||"Punto en el mapa").slice(0,160)});
+const hhmm = iso => iso ? new Date(iso).toLocaleTimeString("es-VE",{hour:"2-digit",minute:"2-digit"}) : "";
+const etaKm = km => Math.max(1, Math.round(km*1.3/25*60));
+const QUICK_P=["Ya bajo","Estoy en la puerta","¿Dónde estás?","Espérame 2 minutos"];
+const QUICK_D=["Voy llegando","Estoy afuera","Hay tráfico, 5 minutos","¿Dónde te espero?"];
+Object.assign(S,{srv:null, srvSig:"", feed:null, feedSig:"", chatOpen:false, nearby:[], rateD:5, dCancelAsk:false, selfCancel:false, srvHist:undefined, online:false, whenMode:"now", demand:false});
+const ACT=["accepted","arrived","ongoing"];
+let pollT=null, lastNearby=0, lastLocPost=0, watchId=null, audioCtx=null;
+
+function beep(){
+  try{ navigator.vibrate?.(180); }catch{}
+  try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.frequency.value=880; g.gain.value=.08;
+    o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+.18); }catch{}
+}
+function kick(ms=0){ clearTimeout(pollT); pollT=setTimeout(poll, ms); }
+async function poll(){
+  let next=6000;
+  try{
+    if(SAVED.token && !document.hidden){
+      if(S.mode==="pas"){
+        const r=await api("/trips/active"); applyPas(r.trip);
+        if(S.srv) next=2500;
+        if(["home","offers"].includes(S.step) && !S.srv?.driver && Date.now()-lastNearby>10000){
+          const c=S.from||S.gps; lastNearby=Date.now();
+          if(c){ S.nearby=await api(`/drivers/nearby?lat=${c.lat}&lng=${c.lng}`); drawLive(); }
+        }
+      } else if(SAVED.driver?.status==="approved"){
+        if(S.online) await postLoc(true);
+        applyFeed(await api("/driver/feed"));
+        next=(S.online||S.feed?.active)?3000:8000;
+      }
+    }
+  }catch(e){ console.warn(e); }
+  kick(document.hidden?10000:next);
+}
+
+/* ---------- Pasajero ---------- */
+function driverPos(t){ return t?.driver_loc ? {lat:t.driver_loc.lat, lng:t.driver_loc.lng} : null; }
+function moveTripMk(t){
+  const p=driverPos(t); if(!p) return;
+  S.curPos=p;
+  M(()=>{ if(!tripMk) tripMk=L.marker(p,{icon:motoIcon("trip",38),interactive:false,zIndexOffset:1000}).addTo(map); else tripMk.setLatLng(p); });
+}
+function tripEta(t){ const p=driverPos(t); return p ? etaKm(haversine(p,t.from)) : null; }
+function applyPas(t){
+  const prev=S.srv; S.srv=t;
+  if(!t){
+    if(prev && ["offers","trip"].includes(S.step)){
+      S.step="home"; S.chatOpen=false;
+      toast(prev.status==="searching" ? "Nadie aceptó a tiempo. Sube tu oferta e intenta de nuevo." : "Tu viaje terminó.");
+      render();
+    }
+    S.srvSig=""; return;
+  }
+  if(!prev || prev.id!==t.id){   // retomar un viaje al abrir la app
+    Object.assign(S,{from:{...t.from}, to:{...t.to}, stops:t.stops||[], svc:t.svc, pay:t.pay_method, women:t.women_only, mixUsd:t.mix_cash,
+      recv:{name:t.recv.name, phone:t.recv.phone, desc:t.recv.desc}});
+    if(!S.route) S.route={coords:[[t.from.lat,t.from.lng],...(t.stops||[]).map(s=>[s.lat,s.lng]),[t.to.lat,t.to.lng]], km:t.km, min:t.minutes};
+  }
+  if(t.notice && t.notice!==prev?.notice) toast(t.notice);
+  if(t.status==="searching"){
+    S.step="offers"; S.usd=t.offer_usd;
+    S.offers=(t.offers||[]).map(o=>({id:o.id, d:dOf(o.driver), usd:o.amount_usd, eta:o.eta_min}));
+    S.offers.sort((a,b)=>isFav(b.d)-isFav(a.d));
+    if(prev?.status==="searching" && (t.offers||[]).some(o=>!(prev.offers||[]).find(p=>p.id===o.id))){ beep(); toast("Nueva oferta de un motorizado"); }
+  } else if(ACT.includes(t.status)){
+    S.chosen={d:dOf(t.driver), usd:t.final_usd, eta:tripEta(t)||5};
+    if(S.step!=="trip"){
+      S.step="trip"; S.panic=false; S.chatOpen=false;
+      if(prev?.status==="searching"){ beep(); }
+      moveTripMk(t);
+      M(()=>{ const p=driverPos(t); if(p) map.fitBounds(L.latLngBounds([[p.lat,p.lng],[t.from.lat,t.from.lng]]),{padding:[60,60],maxZoom:16}); });
+    }
+    if(prev && prev.status!==t.status){
+      if(t.status==="arrived"){ beep(); toast(`¡${S.chosen.d.first} llegó! Sal a encontrarte con tu motorizado.`); }
+      if(t.status==="ongoing") toast("Viaje iniciado. ¡Buen viaje!");
+    }
+    const pm=prev?.messages||[], nm=t.messages||[];
+    if(prev && nm.length>pm.length && nm[nm.length-1].from==="d"){ beep(); if(!S.chatOpen) toast(`💬 ${S.chosen.d.first}: ${nm[nm.length-1].text}`); }
+    moveTripMk(t);
+  } else if(t.status==="completed" && S.step!=="done"){
+    S.chosen={d:dOf(t.driver), usd:t.final_usd};
+    S.step="done"; S.doneAt=Date.parse(t.completed_at); S.tip=0; S.stars=5; S.discount=0; S.chatOpen=false;
+    if(prev) beep();
+  }
+  const sig=JSON.stringify({...t, driver_loc:null});
+  if(sig!==S.srvSig){ S.srvSig=sig; if(S.mode==="pas" && !S.overlay && !S.picking) render(); }
+  else if(S.step==="trip"){ const st=$(".status"); if(st) st.innerHTML=tripStatus(t); const b=$(".bar i"); if(b) b.style.width=tripPct(t)+"%"; }
+}
+function tripStatus(t){
+  if(t.status==="accepted"){ const e=tripEta(t); return e ? `Tu motorizado llega en ${e} min` : "Tu motorizado va en camino"; }
+  if(t.status==="arrived") return "¡Llegó! Sal a encontrarte con tu motorizado";
+  return "En viaje a "+esc(t.to.name);
+}
+function tripPct(t){
+  if(t.status==="accepted") return 15;
+  if(t.status==="arrived") return 30;
+  const p=driverPos(t); if(!p) return 50;
+  const total=Math.max(.1,haversine(t.from,t.to)), left=haversine(p,t.to);
+  return Math.round(30+70*Math.max(0,Math.min(1,1-left/total)));
+}
+function payTextT(t, usd){
+  if(t.pay_method!==MIX) return t.pay_method;
+  const cash=Math.min(t.mix_cash, Math.floor(usd));
+  return `${fmtUSD(cash)} efectivo + ${fmtBs((usd-cash)*RATE)} Pago Móvil`;
+}
+function chatPanel(t, me){
+  const msgs=t.messages||[], who=me==="p"?"tu motorizado":"tu pasajero";
+  return `<div class="chat"><div class="msgs" id="msgs">${msgs.length ? msgs.map(m=>`<div class="msg ${m.from===me?"mine":""}">${esc(m.text)}<small>${hhmm(m.at)}</small></div>`).join("")
+      : `<p class="hint">Escríbele a ${who}.</p>`}</div>
+    <div class="quick">${(me==="p"?QUICK_P:QUICK_D).map(q=>`<button class="chip" data-qmsg="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+    <div class="search"><input id="chatIn" class="inp" placeholder="Escribe un mensaje" autocomplete="off" maxlength="300" enterkeyhint="send"><button class="ghost" id="chatSend" style="width:auto">Enviar</button></div></div>`;
+}
+const chatBtn = t => { const n=(t.messages||[]).length; return `<button class="ghost" id="chatToggle">${S.chatOpen?"Cerrar chat":"💬 Chat"+(n?` (${n})`:"")}</button>`; };
+
+const _home=home;
+home = () => _home().replace(/<div class="row nw when">[\s\S]*?<\/div>/,"");
+const _offers=offers;
+offers = () => (S.srv?.notice?`<div class="alert">${esc(S.srv.notice)}</div>`:"") + _offers()
+  .replace("Enviando a motorizados cercanos…","Esperando ofertas de motorizados cercanos…")
+  .replace('<button class="ghost" id="raise">', S.offers.length?'<button class="ghost" id="raise">':'<p class="hint">Si nadie responde en 1 o 2 minutos, sube tu oferta.</p><button class="ghost" id="raise">');
+const _profile=OV.profile;
+OV.profile = () => _profile().replace(/<div class="lbl">Reseñas recientes<\/div>[\s\S]*?(?=<button class="cta")/,"");
+startSearch = function(){
+  withBusy($("#go"), async()=>{
+    const body={from:pl(S.from), to:pl(S.to), stops:S.stops.map(pl), svc:S.svc, women_only:S.women, offer_usd:S.usd, pay_method:S.pay,
+      mix_cash:S.pay===MIX?S.mixUsd:0, recv_name:S.recv.name, recv_phone:S.recv.phone, recv_desc:S.recv.desc,
+      km:+(S.route?.km||0).toFixed(2), minutes:S.route?.min||0};
+    const t=await api("/trips",{method:"POST",body}); S.srv=null; applyPas(t); kick(2500);
+  });
+};
+trip = function(){
+  const t=S.srv, o=S.chosen, d=o.d;
+  return `<div class="grab"></div>
+  <div class="driver"><div class="av" style="background:${d.c}">${esc(d.n[0])}</div>
+    <div><strong>${esc(d.n)}</strong> <span style="color:var(--muted);font-size:.85rem">★ ${d.r} · ${d.v} viajes</span><br><span style="font-size:.85rem;color:var(--muted)">${esc(d.moto)}</span></div>
+    <span class="plate">${esc(d.plate)}</span></div>
+  <div class="status">${tripStatus(t)}</div>
+  <div class="bar"><i style="width:${tripPct(t)}%"></i></div>
+  <div class="sum"><span>Precio acordado</span><span>${show(o.usd)}</span><span>Equivale a</span><span>${other(o.usd)}</span><span>Pago</span><span>${esc(payTextT(t,o.usd))}</span></div>
+  ${t.svc==="viaje"?`<div class="note">🪖 ${esc(d.first)} lleva casco extra para ti. Verifica la placa <b>${esc(d.plate)}</b> antes de subir.</div>`
+    :`<div class="note">📦 Entrega a ${esc(t.recv.name||"destinatario")}${t.recv.desc?" · "+esc(t.recv.desc):""}.</div>`}
+  <div class="row nw">${chatBtn(t)}<a class="ghost" href="tel:+${digits(d.phone)}">📞 Llamar</a></div>
+  ${S.chatOpen?chatPanel(t,"p"):""}
+  <a class="ghost" href="https://wa.me/?text=${encodeURIComponent(shareText())}" target="_blank" rel="noopener">📤 Compartir mi viaje</a>
+  ${S.panic?panicPanel():`<button class="panic" id="panic">🚨 Botón de pánico</button>`}
+  ${t.status!=="ongoing"?`<button class="link" id="tripCancel">Cancelar viaje</button>`:""}`;
+};
+done = function(){
+  const t=S.srv, o=S.chosen, d=o.d, usd=o.usd, tot=usd+S.tip;
+  let info;
+  if(t.pay_method==="Pago Móvil") info=`Haz el Pago Móvil a <b>${esc(d.n)}</b>: ${esc(d.bank)} · ${esc(d.payPhone)}${d.payCi?" · "+esc(d.payCi):""} · <b>${fmtBs(tot*RATE)}</b>`;
+  else if(t.pay_method===MIX){ const cash=Math.min(t.mix_cash,Math.floor(usd)); info=`Paga <b>${fmtUSD(cash+S.tip)}</b> en efectivo y <b>${fmtBs((usd-cash)*RATE)}</b> por Pago Móvil a ${esc(d.n)}: ${esc(d.bank)} · ${esc(d.payPhone)}`; }
+  else if(t.pay_method==="Efectivo $") info=`Paga <b>${fmtUSD(tot)}</b> en efectivo a ${esc(d.first)}. Si no tienes sencillo, te puede dar vuelto en Bs.`;
+  else info=`Paga <b>${fmtUSD(tot)}</b> por ${esc(t.pay_method)}. Pídele a ${esc(d.first)} sus datos al llegar.`;
+  return `<div class="grab"></div>
+  <h2>${t.svc==="encomienda"?"¡Encomienda entregada! 📦":"¡Llegaste! 🎉"}</h2>
+  ${t.svc==="encomienda"?`<p class="hint">Entregada a ${esc(t.recv.name||"destinatario")} a las ${hhmm(t.completed_at)} en ${esc(t.to.name)}.</p>`:""}
+  <div class="sum"><span>Viaje</span><span>${fmtUSD(usd)}</span>${S.tip?`<span>Propina</span><span>${fmtUSD(S.tip)}</span>`:""}<span><b>Total</b></span><span>${fmtUSD(tot)}</span>
+    <span>En bolívares</span><span>${fmtBs(tot*RATE)}</span><span>Distancia</span><span>${(+t.km||0).toFixed(1)} km</span></div>
+  <div class="note">${info}</div>
+  <div class="lbl" style="text-align:center">Califica a ${esc(d.first)}</div>
+  <div class="stars">${[1,2,3,4,5].map(n=>`<button data-star="${n}" class="${n<=S.stars?"on":""}" aria-label="${n} estrellas">★</button>`).join("")}</div>
+  <div class="lbl">Propina para ${esc(d.first)}</div>
+  <div class="row">${[0,.5,1,2].map(v=>`<button class="chip" data-tip="${v}" aria-pressed="${S.tip===v}">${v?fmtUSD(v):"Sin propina"}</button>`).join("")}</div>
+  <button class="ghost" id="fav">${isFav(d)?"❤️ "+esc(d.first)+" es tu favorito":"🤍 Guardar a "+esc(d.first)+" como favorito"}</button>
+  <button class="cta" id="again">Enviar calificación</button>`;
+};
+OV.invite = () => {
+  if(!SAVED.user){ S.overlay="regpas"; return OV.regpas(); }
+  const msg=`¡Pide tu moto con Pana Moto y pon tu precio! Usa mi código ${SAVED.user.code}: ${location.href.split("#")[0]}`;
+  return `<div class="grab"></div><div class="ovhead"><h2>Invita a un pana</h2>${closeBtn()}</div>
+  <p class="hint">Comparte Pana Moto con tus panas. Muy pronto, cuando hagan su primer viaje con tu código, los dos ganarán descuento.</p>
+  <div class="codebox"><small>Tu código</small><b>${SAVED.user.code}</b><button class="ghost" id="copyCode">Copiar</button></div>
+  <a class="cta" style="display:block;text-align:center;text-decoration:none" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Compartir por WhatsApp</a>`;
+};
+OV.history = () => {
+  const head=`<div class="grab"></div><div class="ovhead"><h2>Mis viajes</h2>${closeBtn()}</div>`;
+  if(S.srvHist===undefined){ S.srvHist=null; api("/trips/history").then(h=>{ S.srvHist=h; if(S.overlay==="history") render(); }).catch(e=>{ S.srvHist=[]; toast(e.message); render(); }); }
+  if(!S.srvHist) return head+`<div class="searching"><span class="pulse"></span>Cargando tus viajes…</div>`;
+  return head+(S.srvHist.length ? S.srvHist.map((h,i)=>`<div class="hist">
+    <div class="top"><strong>${esc(short(h.from.name,18))} → ${esc(short(h.to.name,18))}</strong><b>${fmtUSD((h.usd||0)+(h.tip_usd||0))}</b></div>
+    <span class="hint">${fmtDate(Date.parse(h.completed_at))} · ${esc(h.driver)}${h.stars?" · "+"★".repeat(h.stars):""}${h.svc==="encomienda"?" · 📦 Encomienda":""}${h.tip_usd?` · propina ${fmtUSD(h.tip_usd)}`:""}</span>
+    <button class="ghost" data-srepeat="${i}">↻ Repetir viaje</button></div>`).join("")
+    : `<p class="hint">Aquí aparecerán tus viajes terminados.</p>`);
+};
+
+/* ---------- Motorizado ---------- */
+function startGps(){
+  if(watchId!==null || !navigator.geolocation) return;
+  watchId=navigator.geolocation.watchPosition(p=>{
+    S.gps={lat:p.coords.latitude, lng:p.coords.longitude};
+    M(()=>{ if(meMk) meMk.setLatLng(S.gps); else meMk=L.marker(S.gps,{icon:icon("me"),interactive:false}).addTo(map); });
+    postLoc(false);
+  }, ()=>toast("Activa tu ubicación para recibir viajes"), {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
+}
+function stopGps(){ if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; } }
+async function postLoc(force){
+  if(!S.online || !S.gps) return;
+  if(Date.now()-lastLocPost < (force?8000:4000)) return;
+  lastLocPost=Date.now();
+  try{ await api("/driver/location",{method:"POST",body:{lat:S.gps.lat, lng:S.gps.lng, online:true}}); }catch{}
+}
+function applyFeed(f){
+  const prev=S.feed; S.feed=f;
+  if(prev){
+    if(f.requests.some(r=>!prev.requests.find(p=>p.id===r.id))){ beep(); if(S.mode==="con" && !f.active) toast("Nueva solicitud cerca de ti"); }
+    if(!prev.active && f.active && f.active.status==="accepted"){ beep(); toast(`¡${f.active.passenger.first} aceptó tu oferta! Ve a recogerlo.`); S.chatOpen=false; S.dCancelAsk=false; }
+    if(prev.active && !f.active && prev.active.status!=="completed" && !S.selfCancel){ beep(); toast("El pasajero canceló el viaje."); }
+    if(prev.active && f.active && prev.active.id===f.active.id){
+      const pm=prev.active.messages||[], nm=f.active.messages||[];
+      if(nm.length>pm.length && nm[nm.length-1].from==="p"){ beep(); if(!S.chatOpen) toast(`💬 ${f.active.passenger.first}: ${nm[nm.length-1].text}`); }
+    }
+  }
+  if(!f.active) S.selfCancel=false;
+  const sig=JSON.stringify({a:f.active, r:f.requests.map(r=>[r.id,r.offer_usd,r.my_offer?.status,r.my_offer?.amount_usd,Math.round(r.pickup_km*2)]), s:f.stats, p:f.promo_active});
+  if(sig!==S.feedSig){ S.feedSig=sig; if(S.mode==="con" && !S.overlay) render(); else drawLive(); }
+}
+function weekReal(st){
+  const names=["L","M","M","J","V","S","D"], w=st.week, max=Math.max(5,...w.map(x=>x.net)), tot=w.reduce((a,x)=>a+x.net,0);
+  return `<div class="chart"><div class="ch-head"><span class="lbl">Ganancia de la semana</span><b>${show(tot,dCur)}</b></div>
+    <div class="bars">${w.map((x,i)=>`<div class="b ${i===6?"t":""}"><span style="height:${Math.max(3,Math.round(x.net/max*100))}%" title="${show(x.net,dCur)}"></span><small>${i===6?"Hoy":names[x.dow]}</small></div>`).join("")}</div></div>`;
+}
+const navLinks = p => `<div class="row nw"><a class="ghost" href="https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving" target="_blank" rel="noopener">🗺️ Google Maps</a><a class="ghost" href="https://waze.com/ul?ll=${p.lat},${p.lng}&navigate=yes" target="_blank" rel="noopener">🚀 Waze</a></div>`;
+function driverTrip(t){
+  const P=t.passenger, usd=t.final_usd, com=t.commission_usd;
+  if(t.status==="completed") return `<div class="grab"></div><h2>¡Viaje terminado! ✅</h2>
+    <div class="sum"><span>Cobra a ${esc(P.first)}</span><span>${fmtUSD(usd)}</span><span>En bolívares</span><span>${fmtBs(usd*RATE)}</span>
+      <span>Pago</span><span>${esc(payTextT(t,usd))}</span><span>Comisión Pana Moto</span><span>${com?fmtUSD(com):"Sin comisión"}</span></div>
+    <div class="lbl" style="text-align:center">Califica a ${esc(P.first)}</div>
+    <div class="stars">${[1,2,3,4,5].map(n=>`<button data-dstar="${n}" class="${n<=S.rateD?"on":""}" aria-label="${n} estrellas">★</button>`).join("")}</div>
+    <button class="cta" id="dRateDone">Listo, buscar más viajes</button>`;
+  const step = {accepted:["Ve a recoger a "+esc(P.first), t.from, "arrived", "📍 Llegué"], arrived:["Esperando a "+esc(P.first), null, "ongoing", "▶️ Iniciar viaje"],
+    ongoing:["Llevando a "+esc(P.first)+" a "+esc(t.to.name), t.to, "completed", "🏁 Finalizar viaje"]}[t.status];
+  return `<div class="grab"></div>
+  <div class="driver"><div class="av" style="background:#7b1e3a">${esc(P.first[0])}</div>
+    <div><strong>${esc(P.name)}</strong><br><span class="hint">★ ${P.rating} · ${t.svc==="encomienda"?"📦 Encomienda":"🏍️ Viaje"}${t.women_only?" · Pidió motorizada":""}</span></div>
+    <span class="plate">${fmtUSD(usd)}</span></div>
+  <div class="status">${step[0]}</div>
+  <div class="route"><b>Recoger:</b> ${esc(t.from.name)}${(t.stops||[]).map((s,i)=>`<br><b>Parada ${i+1}:</b> ${esc(s.name)}`).join("")}<br><b>Destino:</b> ${esc(t.to.name)}<br><span class="hint">${(+t.km||0).toFixed(1)} km · ${esc(payTextT(t,usd))}</span></div>
+  ${t.svc==="encomienda"?`<div class="note">📦 Entregar a <b>${esc(t.recv.name)}</b>${t.recv.phone?` · ${esc(t.recv.phone)}`:""}${t.recv.desc?` · ${esc(t.recv.desc)}`:""}</div>`:""}
+  ${step[1]?navLinks(step[1]):""}
+  <button class="cta" data-dnext="${step[2]}">${step[3]}</button>
+  <div class="row nw">${chatBtn(t)}${P.phone?`<a class="ghost" href="tel:+${digits(P.phone)}">📞 Llamar</a>`:""}</div>
+  ${S.chatOpen?chatPanel(t,"d"):""}
+  ${t.status!=="ongoing" ? (S.dCancelAsk ? `<div class="panel"><strong>¿Por qué cancelas?</strong><div class="row">${["El pasajero no aparece","Problema con la moto","Está muy lejos","Otro motivo"].map(r=>`<button class="chip" data-dcancel="${r}">${r}</button>`).join("")}</div>
+      <p class="hint">El viaje se publicará de nuevo para otro motorizado.</p><button class="ghost" id="dCancelNo">Volver</button></div>` : `<button class="link" id="dCancelAsk">Cancelar viaje</button>`) : ""}`;
+}
+dashView = function(){
+  const F=S.feed;
+  if(!F) return `<div class="grab"></div><div class="searching"><span class="pulse"></span>Conectando con Pana Moto…</div>`;
+  if(F.active) return driverTrip(F.active);
+  const st=F.stats, pct=Math.round(F.commission*100);
+  return `<div class="grab"></div>
+  <button class="toggle green" id="online" aria-pressed="${S.online}"><span>${S.online?"🟢 Estás disponible":"⚪ Estás desconectado"}<small>${S.online?"Los pasajeros cercanos te ven en el mapa":"Actívate para recibir solicitudes"}</small></span><i></i></button>
+  ${F.promo_active?`<div class="promo">🎉 Estás en tu mes sin comisión hasta el ${fmtDate(Date.parse(F.promo_until))}.</div>`:`<div class="note">Comisión de Pana Moto: ${pct}% por viaje.</div>`}
+  <div class="row" style="justify-content:space-between;align-items:center"><span class="lbl">Hoy · ★ ${st.rating} · ${st.trips} viajes en total</span>
+    <div class="cur"><button data-dcur="USD" aria-pressed="${dCur==="USD"}">$</button><button data-dcur="VES" aria-pressed="${dCur==="VES"}">Bs</button></div></div>
+  <div class="earn"><div><small>Cobrado</small><b>${show(st.today_gross,dCur)}</b></div><div><small>Comisión</small><b>−${show(st.today_com,dCur)}</b></div><div><small>Viajes</small><b>${st.today_trips}</b></div></div>
+  ${weekReal(st)}
+  ${S.online?`<h2>Solicitudes cerca de ti</h2>
+  ${F.requests.length?F.requests.map(r=>{ const mo=r.my_offer, c=F.promo_active?0:+(r.offer_usd*F.commission).toFixed(2); return `<div class="req">
+    <div class="top"><strong>${esc(r.passenger.first)} ★ ${r.passenger.rating} · ${r.svc==="encomienda"?"📦 Encomienda":"Viaje"}</strong><span class="hint">a ${r.pickup_km} km · ${r.eta_min} min</span></div>
+    <div class="route"><b>${esc(r.from.name)}</b> → <b>${esc(r.to.name)}</b> · ${(+r.km||0).toFixed(1)} km · ${esc(payTextT(r,r.offer_usd))}${r.women_only?` <span class="tag pk">Pidió motorizada</span>`:""}${(r.stops||[]).length?` · ${r.stops.length} parada${r.stops.length>1?"s":""}`:""}</div>
+    <div class="top"><span class="amt">${show(r.offer_usd,dCur)}</span><span class="hint">${c?`Comisión ${show(c,dCur)} · `:"Sin comisión · "}Ganas <b>${show(r.offer_usd-c,dCur)}</b></span></div>
+    ${mo&&mo.status==="pending" ? `<div class="mix"><span>⏳ Ofertaste ${show(mo.amount_usd,dCur)}. Esperando al pasajero…</span><button class="link" data-withdraw="${r.id}">Retirar</button></div>`
+      : `<div class="ctr"><button class="acc" data-offer="${r.id}" data-amt="${r.offer_usd}">Aceptar ${fmtUSD(r.offer_usd)}</button>
+      <button data-offer="${r.id}" data-amt="${r.offer_usd+.5}">${fmtUSD(r.offer_usd+.5)}</button><button data-offer="${r.id}" data-amt="${r.offer_usd+1}">${fmtUSD(r.offer_usd+1)}</button></div>`}
+  </div>`; }).join("") : `<div class="searching"><span class="pulse"></span>Buscando solicitudes cerca de ti…</div>`}`
+  : `<p class="hint">Mientras estés desconectado no recibes solicitudes.</p>`}
+  <div class="note">El pasajero te paga el viaje directo a ti. Si ofreces más que su precio, él decide si acepta.</div>`;
+};
+
+/* ---------- Mapa en vivo ---------- */
+let liveMks=[];
+function drawLive(){
+  if(!map) return;
+  liveMks.forEach(m=>m.remove()); liveMks=[];
+  if(S.mode==="con" && S.feed && !S.overlay && SAVED.driver?.status==="approved"){
+    const a=S.feed.active;
+    if(a && a.status!=="completed"){
+      const pts=[[a.from.lat,a.from.lng],...(a.stops||[]).map(s=>[s.lat,s.lng]),[a.to.lat,a.to.lng]];
+      liveMks.push(L.marker(a.from,{icon:ptIcon("#16804a")}).addTo(map), L.marker(a.to,{icon:ptIcon("#c23b2e")}).addTo(map),
+        L.polyline(pts,{color:"#7b1e3a",weight:4,opacity:.8,dashArray:"6 8"}).addTo(map));
+    } else if(S.online) S.feed.requests.forEach(r=>liveMks.push(L.marker(r.from,{icon:L.divIcon({className:"",html:`<div class="reqpin">${fmtUSD(r.offer_usd)}</div>`,iconSize:[60,26],iconAnchor:[30,26]})}).addTo(map)));
+  }
+  if(S.mode==="pas" && ["home","offers"].includes(S.step) && !S.picking)
+    S.nearby.forEach(n=>liveMks.push(L.marker([n.lat,n.lng],{icon:motoIcon(n.f?"f":""),interactive:false}).addTo(map)));
+}
+spawnDrivers = function(){};
+const _dx=drawExtra;
+drawExtra = function(){ _dx(); drawLive(); };
+
+/* ---------- Eventos de viajes en vivo (antes que los de demo) ---------- */
+window.addEventListener("click", e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset;
+  if(t.id==="m-con"||t.id==="m-pas"){ kick(100); return; }
+  if(d.ov==="history"){ S.srvHist=undefined; return; }
+  const stop = () => { e.stopImmediatePropagation(); e.preventDefault(); };
+  const run = fn => { stop(); withBusy(t, fn); };
+  const curTrip = () => S.mode==="pas" ? S.srv : S.feed?.active;
+
+  /* pasajero */
+  if(S.mode==="pas" && S.srv){
+    if(d.acc!==undefined) return run(async()=>{ const o=S.offers[+d.acc]; applyPas(await api(`/trips/${S.srv.id}/offers/${o.id}/accept`,{method:"POST"})); kick(1500); });
+    if(d.rej!==undefined) return run(async()=>{ const o=S.offers[+d.rej]; applyPas(await api(`/trips/${S.srv.id}/offers/${o.id}/reject`,{method:"POST"})); });
+    if(t.id==="raise") return run(async()=>{ applyPas(await api(`/trips/${S.srv.id}/raise`,{method:"POST",body:{offer_usd:+(S.usd+.5).toFixed(2)}})); toast("Subiste tu oferta a "+show(S.usd)); });
+    if(t.id==="cancel"||t.id==="tripCancel") return run(async()=>{ await api(`/trips/${S.srv.id}/cancel`,{method:"POST",body:{reason:""}});
+      S.srv=null; S.srvSig=""; S.step="home"; S.chatOpen=false; toast("Viaje cancelado"); });
+    if(t.id==="again" && S.step==="done") return run(async()=>{ await api(`/trips/${S.srv.id}/rate`,{method:"POST",body:{stars:S.stars, tip_usd:S.tip}});
+      Object.assign(S,{srv:null, srvSig:"", step:"home", to:null, route:null, stars:5, tip:0, discount:0, stops:[], recv:{name:"",phone:"",desc:""}});
+      toast("¡Gracias por calificar!"); });
+  }
+  if(d.srepeat!==undefined){ stop(); const h=S.srvHist[+d.srepeat];
+    Object.assign(S,{from:h.from, to:h.to, stops:h.stops||[], svc:h.svc, overlay:null, step:"home", route:null}); getRoute(); render(); return; }
+
+  /* chat (pasajero o motorizado) */
+  if(t.id==="chatToggle"){ stop(); S.chatOpen=!S.chatOpen; render(); if(S.chatOpen){ const m=$("#msgs"); if(m) m.scrollTop=m.scrollHeight; } return; }
+  if(t.id==="chatSend" || d.qmsg){
+    const text = d.qmsg || ($("#chatIn")?.value||"").trim(), tr=curTrip();
+    if(!text || !tr){ stop(); return; }
+    return run(async()=>{ await api(`/trips/${tr.id}/messages`,{method:"POST",body:{text}}); kick(200); });
+  }
+
+  /* motorizado */
+  if(S.mode==="con" && SAVED.driver?.status==="approved"){
+    if(t.id==="online"){ stop();
+      if(!S.online){ S.online=true; startGps(); lastLocPost=0; if(S.gps) postLoc(false); toast("Estás disponible. Los pasajeros cercanos te ven."); }
+      else { S.online=false; stopGps(); if(S.gps) api("/driver/location",{method:"POST",body:{lat:S.gps.lat,lng:S.gps.lng,online:false}}).catch(()=>{}); }
+      render(); kick(1500); return; }
+    if(d.offer!==undefined){ if(!S.gps) { stop(); return toast("Esperando tu ubicación GPS…"); }
+      return run(async()=>{ await postLoc(true); const r=await api(`/trips/${d.offer}/offers`,{method:"POST",body:{amount_usd:+(+d.amt).toFixed(2)}});
+        toast(`Oferta de ${fmtUSD(r.amount_usd)} enviada`); applyFeed(await api("/driver/feed")); }); }
+    if(d.withdraw!==undefined) return run(async()=>{ await api(`/trips/${d.withdraw}/offers`,{method:"DELETE"}); applyFeed(await api("/driver/feed")); });
+    if(d.dnext!==undefined) return run(async()=>{ const a=S.feed.active; await api(`/trips/${a.id}/status`,{method:"POST",body:{status:d.dnext}});
+      if(d.dnext==="completed"){ S.rateD=5; S.chatOpen=false; } applyFeed(await api("/driver/feed")); });
+    if(t.id==="dCancelAsk"){ stop(); S.dCancelAsk=true; render(); return; }
+    if(t.id==="dCancelNo"){ stop(); S.dCancelAsk=false; render(); return; }
+    if(d.dcancel!==undefined) return run(async()=>{ S.selfCancel=true; await api(`/trips/${S.feed.active.id}/cancel`,{method:"POST",body:{reason:d.dcancel}});
+      S.dCancelAsk=false; S.chatOpen=false; toast("Viaje cancelado. Se publicó de nuevo para otro motorizado."); applyFeed(await api("/driver/feed")); });
+    if(d.dstar!==undefined){ stop(); S.rateD=+d.dstar; render(); return; }
+    if(t.id==="dRateDone") return run(async()=>{ await api(`/trips/${S.feed.active.id}/rate`,{method:"POST",body:{stars:S.rateD}}); applyFeed(await api("/driver/feed")); });
+  }
+}, true);
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target.id==="chatIn"){ e.preventDefault(); $("#chatSend")?.click(); } });
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) kick(100); });
+kick(600);
+}
 
 /* ================= Arranque ================= */
 if(API && !SAVED.token){ SAVED.user=null; save("user"); }
