@@ -266,16 +266,24 @@ function setMapStyle(style){
   if(!map) return;
   mapStyle=style;
   tileLayers.forEach(l=>map.removeLayer(l)); tileLayers=[];
-  // Zoom nativo 17: más cerca el mapa se amplía en vez de mostrar "sin datos"
-  const opt={maxZoom:19, maxNativeZoom:17, attribution:"© Esri · OpenStreetMap",
-    className: style==="calles" && darkMQ.matches ? "dkmap" : ""};
-  const urls = style==="satelite" ? [ESRI("World_Imagery"), ESRI("Reference/World_Transportation"), ESRI("Reference/World_Boundaries_and_Places")]
-    : [ESRI("World_Street_Map")];   // mapa completo con nombres de calles (en modo oscuro se oscurece con filtro)
+  const dk = style==="calles" && darkMQ.matches ? "dkmap" : "";
+  const OSM = ["https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,attribution:"© OpenStreetMap",className:dk}];
+  const EST = [ESRI("World_Street_Map"),{maxZoom:19,maxNativeZoom:16,attribution:"© Esri · OpenStreetMap",className:dk}];
+  let list;
+  if(style==="satelite"){
+    const o={maxZoom:19,maxNativeZoom:17,attribution:"© Esri · OpenStreetMap"};
+    list=[[ESRI("World_Imagery"),o],[ESRI("Reference/World_Transportation"),{...o,attribution:""}],[ESRI("Reference/World_Boundaries_and_Places"),{...o,attribution:""}]];
+  } else {
+    // En el link (https) OpenStreetMap tiene calles con nombre hasta el zoom máximo; Esri queda de respaldo
+    list = location.protocol==="https:" ? [OSM] : [EST];
+  }
   let errs=0;
-  urls.forEach((u,i)=>{
-    const l=L.tileLayer(u, i?{...opt,attribution:""}:opt).addTo(map);
-    if(i===0) l.on("tileerror",()=>{ if(++errs===8){ tileLayers.forEach(x=>map.removeLayer(x));
-      tileLayers=[L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:18,attribution:"© OpenStreetMap",className:opt.className}).addTo(map)]; } });
+  list.forEach(([u,o],i)=>{
+    const l=L.tileLayer(u,o).addTo(map);
+    if(i===0 && style==="calles") l.on("tileerror",()=>{ if(++errs===6){
+      tileLayers.forEach(x=>map.removeLayer(x));
+      const alt = u===OSM[0] ? EST : OSM;
+      tileLayers=[L.tileLayer(alt[0],alt[1]).addTo(map)]; } });
     tileLayers.push(l);
   });
   $("#stylebtn").textContent = style==="satelite" ? "🗺️ Calles" : "🛰️ Satélite";

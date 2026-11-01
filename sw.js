@@ -1,6 +1,6 @@
 // Pana Moto: guarda la app para abrir rápido y funcionar con poca señal.
 // Siempre intenta la versión más nueva primero (red), y usa la guardada si no hay conexión.
-const VERSION = "pm-v4";
+const VERSION = "pm-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -22,7 +22,7 @@ self.addEventListener("fetch", e => {
   // Archivos de la app: red primero, copia guardada si no hay señal
   if (url.origin === location.origin) {
     e.respondWith(
-      fetch(req).then(res => {
+      fetch(req, {cache: "no-cache"}).then(res => {
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put(req, copy));
         return res;
