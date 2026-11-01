@@ -45,6 +45,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .mapwrap{position:relative;flex:1 1 auto;min-height:120px}
 #map{position:absolute;inset:0;background:var(--surface-2)}
 .leaflet-container{background:var(--surface-2)!important}
+.dkmap{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9) saturate(.75)}
 .leaflet-container img.leaflet-tile{mix-blend-mode:normal!important;width:256.6px!important;height:256.6px!important}
 .mapmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--muted);font-weight:600;z-index:400;pointer-events:none}
 .fab{position:absolute;right:12px;z-index:500;height:46px;border-radius:23px;border:0;background:var(--surface);box-shadow:0 4px 12px rgba(0,0,0,.25);font-weight:700;font-size:.82rem;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -265,15 +266,16 @@ function setMapStyle(style){
   if(!map) return;
   mapStyle=style;
   tileLayers.forEach(l=>map.removeLayer(l)); tileLayers=[];
-  const opt={maxZoom:19, maxNativeZoom:18, attribution:"© Esri · OpenStreetMap"};
+  // Zoom nativo 17: más cerca el mapa se amplía en vez de mostrar "sin datos"
+  const opt={maxZoom:19, maxNativeZoom:17, attribution:"© Esri · OpenStreetMap",
+    className: style==="calles" && darkMQ.matches ? "dkmap" : ""};
   const urls = style==="satelite" ? [ESRI("World_Imagery"), ESRI("Reference/World_Transportation"), ESRI("Reference/World_Boundaries_and_Places")]
-    : darkMQ.matches ? [ESRI("Canvas/World_Dark_Gray_Base"), ESRI("Canvas/World_Dark_Gray_Reference")]
-    : [ESRI("World_Street_Map")];
+    : [ESRI("World_Street_Map")];   // mapa completo con nombres de calles (en modo oscuro se oscurece con filtro)
   let errs=0;
   urls.forEach((u,i)=>{
     const l=L.tileLayer(u, i?{...opt,attribution:""}:opt).addTo(map);
     if(i===0) l.on("tileerror",()=>{ if(++errs===8){ tileLayers.forEach(x=>map.removeLayer(x));
-      tileLayers=[L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map)]; } });
+      tileLayers=[L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:18,attribution:"© OpenStreetMap",className:opt.className}).addTo(map)]; } });
     tileLayers.push(l);
   });
   $("#stylebtn").textContent = style==="satelite" ? "🗺️ Calles" : "🛰️ Satélite";
@@ -287,7 +289,7 @@ const motoIcon = (extra="", size=32) => L.divIcon({className:"mv", html:`<div cl
 function faceMoto(mk, dLng){ const sp=mk?.getElement()?.querySelector(".fl"); if(sp && dLng) sp.style.transform = dLng>0 ? "scaleX(1)" : "scaleX(-1)"; }
 
 function initMap(){
-  map = L.map("map",{zoomControl:false, attributionControl:true}).setView([CARACAS.lat,CARACAS.lng],15);
+  map = L.map("map",{zoomControl:false, attributionControl:true, maxZoom:19}).setView([CARACAS.lat,CARACAS.lng],15);
   setMapStyle("calles");
   map.on("movestart",()=>{ if(S.picking) $("#cpin").classList.add("lift"); });
   map.on("moveend",onMoveEnd);
