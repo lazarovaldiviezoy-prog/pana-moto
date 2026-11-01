@@ -1,7 +1,7 @@
 // Pana Moto: guarda la app para abrir rápido y funcionar con poca señal.
 // Siempre intenta la versión más nueva primero (red), y usa la guardada si no hay conexión.
-const VERSION = "pm-v9";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const VERSION = "pm-v10";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
