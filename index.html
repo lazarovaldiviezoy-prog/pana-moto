@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<meta name="theme-color" content="#7b1e3a">
+<meta name="theme-color" content="#14316b">
 <meta name="description" content="Pana Moto: pide tu moto en Venezuela y pon tu precio en dólares o bolívares.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pana Moto">
@@ -14,18 +14,18 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  /* Vinotinto y dorado */
-  --bg:#f6f1ef; --surface:#ffffff; --surface-2:#f5eeec; --ink:#2a1018; --muted:#6e5a60; --line:#e8dcd9;
-  --accent:#7b1e3a; --accent-ink:#ffffff; --gold:#e8b84a; --gold-ink:#3a1020; --top:#7b1e3a; --route:#7b1e3a;
-  --blue:#7b1e3a; --good:#16804a; --bad:#d6452f; --pink:#b8327a;
+  /* Tricolor pana: amarillo, azul y rojo */
+  --bg:#f4f6fb; --surface:#ffffff; --surface-2:#edf1f9; --ink:#0f1b3d; --muted:#56627f; --line:#d9e0ee;
+  --accent:#14316b; --accent-ink:#ffcc00; --gold:#ffcc00; --gold-ink:#14316b; --top:#ffcc00; --top-ink:#14316b;
+  --red:#e2231a; --route:#e2231a; --blue:#14316b; --good:#15803d; --bad:#e2231a; --pink:#c0267a;
   --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;
   --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#150a0f; --surface:#211218; --surface-2:#2d1820; --ink:#f6ecee; --muted:#c2aab1; --line:#422833;
-  --accent:#b8325a; --accent-ink:#ffffff; --gold:#f0c35a; --gold-ink:#2a0d17; --top:#4a1024; --route:#f0c35a;
-  --blue:#f0c35a; --good:#4cc887; --bad:#ff7b6b; --pink:#ff7ab8; color-scheme:dark}}
+  --bg:#08112a; --surface:#0f1b3d; --surface-2:#172650; --ink:#eef2fb; --muted:#a7b3d1; --line:#243663;
+  --accent:#ffcc00; --accent-ink:#0b1838; --gold:#ffcc00; --gold-ink:#0b1838; --top:#0f1b3d; --top-ink:#ffcc00;
+  --red:#ff5a4f; --route:#ffcc00; --blue:#ffcc00; --good:#4cc887; --bad:#ff6b61; --pink:#ff7ab8; color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;display:flex;flex-direction:column;overflow:hidden}
@@ -33,15 +33,15 @@ button{font:inherit;color:inherit;cursor:pointer}
 a{color:inherit}
 button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--top);color:#fff;z-index:1001;
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--top);color:var(--top-ink);z-index:1001;
   padding:calc(10px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) 8px max(14px,env(safe-area-inset-left,0px))}
 .brand{font-family:var(--display);font-weight:800;font-size:1.25rem;letter-spacing:-.02em;white-space:nowrap}
 .brand{display:flex;align-items:center;gap:6px}
 .brand .logo{width:26px;height:26px;border-radius:7px;box-shadow:0 0 0 1.5px rgba(255,255,255,.35)}
-.brand i{font-style:normal;background:var(--gold);color:var(--gold-ink);padding:0 6px;border-radius:6px;margin-left:2px}
-.modes{display:flex;background:rgba(255,255,255,.14);border-radius:999px;padding:3px}
-.modes button{border:0;background:transparent;padding:6px 11px;border-radius:999px;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.8)}
-.modes button[aria-pressed="true"]{background:#fff;color:#7b1e3a}
+.brand i{font-style:normal;background:var(--top-ink);color:var(--top);padding:0 6px;border-radius:6px;margin-left:2px}
+.modes{display:flex;background:color-mix(in srgb,var(--top-ink) 12%,transparent);border-radius:999px;padding:3px}
+.modes button{border:0;background:transparent;padding:6px 11px;border-radius:999px;font-size:.8rem;font-weight:600;color:color-mix(in srgb,var(--top-ink) 78%,transparent)}
+.modes button[aria-pressed="true"]{background:var(--top-ink);color:var(--top)}
 .offline{background:var(--bad);color:#fff;text-align:center;font-size:.82rem;font-weight:600;padding:6px 12px;z-index:1001}
 
 .mapwrap{position:relative;flex:1 1 auto;min-height:120px}
@@ -173,13 +173,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 
 .leaflet-marker-icon.mv{transition:transform 1s linear}
 .nomv .leaflet-marker-icon.mv{transition:none!important}
-.mk{--b:#7b1e3a;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#7b1e3a;color:#f0c35a;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.mk{--b:#14316b;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#14316b;color:#ffcc00;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .mk.f{background:var(--pink);color:#fff;--b:var(--pink)}
-.mk.trip{--b:#f0c35a;background:#f0c35a;color:#7b1e3a;width:38px;height:38px}
+.mk.trip{--b:#ffcc00;background:#ffcc00;color:#14316b;width:38px;height:38px}
 .mk .fl{display:grid;transition:transform .3s}
 .me{width:18px;height:18px;border-radius:50%;background:#2f6bff;border:3px solid #fff;box-shadow:0 0 0 8px rgba(47,107,255,.2)}
 .pt{width:18px;height:18px;border-radius:50%;border:4px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
-.menu{border:0;background:rgba(255,255,255,.14);color:#fff;width:34px;height:34px;border-radius:10px;font-size:1.1rem;display:grid;place-items:center;flex:none}
+.menu{border:0;background:color-mix(in srgb,var(--top-ink) 12%,transparent);color:var(--top-ink);width:34px;height:34px;border-radius:10px;font-size:1.1rem;display:grid;place-items:center;flex:none}
 .ovhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .x{border:0;background:var(--surface-2);width:34px;height:34px;border-radius:50%;font-size:.95rem;flex:none}
 .x.sm{width:28px;height:28px;font-size:.8rem}
@@ -210,7 +210,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .promo{background:color-mix(in srgb,var(--gold) 25%,var(--surface));border-radius:12px;padding:10px 12px;font-size:.85rem;line-height:1.45}
 .checks{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.84rem}
 .checks div{display:flex;gap:6px;align-items:center} .checks span{color:var(--good);font-weight:800}
-.wallet{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--accent);color:#fff;border-radius:16px;padding:14px}
+.wallet{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#14316b;color:#fff;border-radius:16px;padding:14px}
 .wallet > div:first-child{min-width:0}
 .wallet small{display:block;font-size:.7rem;opacity:.85;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .wallet b{display:block;font-family:var(--display);font-size:1.7rem;font-variant-numeric:tabular-nums}
@@ -257,15 +257,15 @@ button.av{border:0;cursor:pointer;flex:none}
 .chat{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:14px;padding:10px}
 .msgs{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto}
 .msg{align-self:flex-start;max-width:80%;background:var(--surface-2);border-radius:14px 14px 14px 4px;padding:7px 10px;font-size:.9rem;line-height:1.35;overflow-wrap:anywhere}
-.msg.mine{align-self:flex-end;background:var(--accent);color:#fff;border-radius:14px 14px 4px 14px}
+.msg.mine{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-radius:14px 14px 4px 14px}
 .msg small{display:block;font-size:.66rem;opacity:.7;margin-top:2px;text-align:right}
 .route{font-size:.88rem;line-height:1.5}
-.reqpin{background:#7b1e3a;color:#fff;font-weight:800;font-size:.78rem;padding:4px 8px;border-radius:12px;border:2px solid #f0c35a;box-shadow:0 2px 6px rgba(0,0,0,.35);text-align:center;white-space:nowrap}
+.reqpin{background:#14316b;color:#ffcc00;font-weight:800;font-size:.78rem;padding:4px 8px;border-radius:12px;border:2px solid #e2231a;box-shadow:0 2px 6px rgba(0,0,0,.35);text-align:center;white-space:nowrap}
 .pushcard{display:flex;flex-direction:column;gap:6px;background:color-mix(in srgb,var(--gold) 22%,var(--surface));border:1.5px solid var(--gold);border-radius:14px;padding:12px}
 .pushcard b{font-size:.95rem} .pushcard span{font-size:.84rem;color:var(--muted);line-height:1.4} .pushcard .cta{padding:10px;font-size:.92rem}
 .tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
 .tabs button{flex:none;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-weight:700;font-size:.82rem;white-space:nowrap}
-.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .tabs button i{font-style:normal;background:var(--gold);color:var(--gold-ink);border-radius:999px;padding:0 6px;margin-left:2px;font-size:.72rem}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .kpis div{background:var(--surface-2);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -281,13 +281,13 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.4}
 .photobtns label:active{transform:scale(.98)}
 .colorchip{display:inline-flex;align-items:center;gap:6px}
 .colorchip i{width:14px;height:14px;border-radius:50%;border:1px solid var(--line);flex:none}
-.mopic .mp{background:var(--accent);overflow:hidden}
+.mopic .mp{background:#14316b;color:#ffcc00;overflow:hidden}
 .mopic .mp img{width:100%;height:100%;object-fit:cover;display:block}
 .mopic small{display:block}
 .mopic small .plate{font-size:.8rem;padding:1px 6px}
 .profbox{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px}
 .profbox small{display:block;color:var(--muted);font-size:.82rem}
-.bigav{width:76px;height:76px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--display);font-size:1.8rem;overflow:hidden;flex:none}
+.bigav{width:76px;height:76px;border-radius:50%;background:#14316b;color:#ffcc00;display:grid;place-items:center;font-family:var(--display);font-size:1.8rem;overflow:hidden;flex:none}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -483,7 +483,7 @@ function drawLayers(){
   else if(toMk){ toMk.remove(); toMk=null; }
   if(routeLn){ routeLn.remove(); routeLn=null; }
   if(pas && S.route && !S.picking){
-    routeLn=L.polyline(S.route.coords,{color:getComputedStyle(document.documentElement).getPropertyValue("--route").trim()||"#7b1e3a",weight:5,opacity:.9,dashArray:S.step==="trip"?null:"8 8"}).addTo(map);
+    routeLn=L.polyline(S.route.coords,{color:getComputedStyle(document.documentElement).getPropertyValue("--route").trim()||"#14316b",weight:5,opacity:.9,dashArray:S.step==="trip"?null:"8 8"}).addTo(map);
   }
   if(tripMk && !(pas && S.step==="trip")){ tripMk.remove(); tripMk=null; }
   const showDrivers = (!pas && S.online) || (pas && !S.picking && (S.step==="home"||S.step==="offers"));
@@ -1373,7 +1373,7 @@ function drawExtra(){
     const c=S.gps||S.from||CARACAS;
     [[.004,.003,520,"Alta demanda"],[-.005,.006,420,"Demanda media"],[.002,-.007,380,"Alta demanda"]].forEach(([a,b,r,t])=>{
       const hi=t.startsWith("Alta");
-      demandLys.push(L.circle([c.lat+a,c.lng+b],{radius:r,color:hi?"#d6452f":"#e8b84a",weight:1,fillOpacity:.22,interactive:false})
+      demandLys.push(L.circle([c.lat+a,c.lng+b],{radius:r,color:hi?"#e2231a":"#ffcc00",weight:1,fillOpacity:.22,interactive:false})
         .bindTooltip(t,{permanent:true,direction:"center",className:"dtip"}).addTo(map));
     });
   }
@@ -1498,7 +1498,7 @@ document.addEventListener("click",e=>{
 
 /* ================= Fase 2: viajes en vivo con el servidor ================= */
 if(API){
-const PAL=["#1d3a8a","#b4532a","#16804a","#7a3fa0","#c2410c","#0f766e","#7b1e3a","#334155"];
+const PAL=["#1d3a8a","#b4532a","#16804a","#7a3fa0","#c2410c","#0f766e","#14316b","#334155"];
 const dOf = r => ({id:r.id, n:r.name, first:r.first, c:PAL[r.id%PAL.length], moto:r.model+(r.moto_color?" · "+r.moto_color:""), color:r.moto_color||"", photo:r.photo_url?API+r.photo_url:"", motoPhoto:r.moto_url?API+r.moto_url:"", plate:r.plate, r:r.rating, v:r.trips,
   g:r.sex==="Mujer"?"f":"m", bank:r.bank||"", payPhone:r.pay_phone||"", payCi:r.pay_ci||"", phone:r.phone||""});
 const pl = p => ({lat:+p.lat, lng:+p.lng, name:String(p.name||"Punto en el mapa").slice(0,160)});
@@ -1738,7 +1738,7 @@ function driverTrip(t){
   const step = {accepted:["Ve a recoger a "+esc(P.first), t.from, "arrived", "📍 Llegué"], arrived:["Esperando a "+esc(P.first), null, "ongoing", "▶️ Iniciar viaje"],
     ongoing:["Llevando a "+esc(P.first)+" a "+esc(t.to.name), t.to, "completed", "🏁 Finalizar viaje"]}[t.status];
   return `<div class="grab"></div>
-  <div class="driver"><div class="av" style="background:#7b1e3a">${esc(P.first[0])}</div>
+  <div class="driver"><div class="av" style="background:#14316b">${esc(P.first[0])}</div>
     <div><strong>${esc(P.name)}</strong><br><span class="hint">★ ${P.rating} · ${t.svc==="encomienda"?"📦 Encomienda":"🏍️ Viaje"}${t.women_only?" · Pidió motorizada":""}</span></div>
     <span class="plate">${fmtUSD(usd)}</span></div>
   <div class="status">${step[0]}</div>
@@ -1786,7 +1786,7 @@ function drawLive(){
     if(a && a.status!=="completed"){
       const pts=[[a.from.lat,a.from.lng],...(a.stops||[]).map(s=>[s.lat,s.lng]),[a.to.lat,a.to.lng]];
       liveMks.push(L.marker(a.from,{icon:ptIcon("#16804a")}).addTo(map), L.marker(a.to,{icon:ptIcon("#c23b2e")}).addTo(map),
-        L.polyline(pts,{color:"#7b1e3a",weight:4,opacity:.8,dashArray:"6 8"}).addTo(map));
+        L.polyline(pts,{color:"#14316b",weight:4,opacity:.8,dashArray:"6 8"}).addTo(map));
     } else if(S.online) S.feed.requests.forEach(r=>liveMks.push(L.marker(r.from,{icon:L.divIcon({className:"",html:`<div class="reqpin">${fmtUSD(r.offer_usd)}</div>`,iconSize:[60,26],iconAnchor:[30,26]})}).addTo(map)));
   }
   if(S.mode==="pas" && ["home","offers"].includes(S.step) && !S.picking)
