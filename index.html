@@ -11,21 +11,27 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Pana Moto</title>
+<script>try{var t=JSON.parse(localStorage.getItem("pm_theme"));if(t==="light"||t==="dark"){document.documentElement.dataset.theme=t;document.querySelector('meta[name="theme-color"]').content=t==="dark"?"#0f1b3d":"#ffcc00";}}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
 :root{
   /* Tricolor pana: amarillo, azul y rojo */
   --bg:#f4f6fb; --surface:#ffffff; --surface-2:#edf1f9; --ink:#0f1b3d; --muted:#56627f; --line:#d9e0ee;
   --accent:#14316b; --accent-ink:#ffcc00; --gold:#ffcc00; --gold-ink:#14316b; --top:#ffcc00; --top-ink:#14316b;
-  --red:#e2231a; --route:#e2231a; --blue:#14316b; --good:#15803d; --bad:#e2231a; --pink:#c0267a;
+  --red:#e2231a; --route:#e2231a; --blue:#14316b; --good:#15803d; --bad:#e2231a; --pink:#c0267a; --link:#14316b;
   --display:"Bricolage Grotesque","Trebuchet MS",sans-serif;
   --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
+/* Modo oscuro: automático según el celular, o elegido en el menú (data-theme) */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#08112a; --surface:#0f1b3d; --surface-2:#172650; --ink:#eef2fb; --muted:#a7b3d1; --line:#243663;
   --accent:#ffcc00; --accent-ink:#0b1838; --gold:#ffcc00; --gold-ink:#0b1838; --top:#0f1b3d; --top-ink:#ffcc00;
-  --red:#ff5a4f; --route:#ffcc00; --blue:#ffcc00; --good:#4cc887; --bad:#ff6b61; --pink:#ff7ab8; color-scheme:dark}}
+  --red:#ff5a4f; --route:#ffcc00; --blue:#ffcc00; --good:#4cc887; --bad:#ff6b61; --pink:#ff7ab8; --link:#ffcc00; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#08112a; --surface:#0f1b3d; --surface-2:#172650; --ink:#eef2fb; --muted:#a7b3d1; --line:#243663;
+  --accent:#ffcc00; --accent-ink:#0b1838; --gold:#ffcc00; --gold-ink:#0b1838; --top:#0f1b3d; --top-ink:#ffcc00;
+  --red:#ff5a4f; --route:#ffcc00; --blue:#ffcc00; --good:#4cc887; --bad:#ff6b61; --pink:#ff7ab8; --link:#ffcc00; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;display:flex;flex-direction:column;overflow:hidden}
@@ -184,7 +190,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .x{border:0;background:var(--surface-2);width:34px;height:34px;border-radius:50%;font-size:.95rem;flex:none}
 .x.sm{width:28px;height:28px;font-size:.8rem}
 .link{border:0;background:none;color:var(--accent);font-weight:700;padding:4px 0;text-align:left;align-self:flex-start}
-@media (prefers-color-scheme:dark){ .link,.field .go{color:var(--gold)} }
+.link,.field .go{color:var(--link)}
 .demo{margin:0;font-size:.82rem;background:color-mix(in srgb,var(--gold) 25%,var(--surface));border-radius:8px;padding:6px 10px}
 .vh{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .list{display:flex;flex-direction:column}
@@ -288,6 +294,10 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.4}
 .profbox{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px}
 .profbox small{display:block;color:var(--muted);font-size:.82rem}
 .bigav{width:76px;height:76px;border-radius:50%;background:#14316b;color:#ffcc00;display:grid;place-items:center;font-family:var(--display);font-size:1.8rem;overflow:hidden;flex:none}
+.themepick{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border-radius:12px;padding:8px 10px;font-weight:600}
+.themepick .cur{background:var(--surface)}
+.themepick .cur button{font-size:.8rem;padding:6px 9px}
+.themepick .cur button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -373,12 +383,14 @@ let map=null, meMk=null, fromMk=null, toMk=null, routeLn=null, tripMk=null, driv
 const M = f => { if(map) try{ f(); }catch(e){ console.warn(e); } };
 const ESRI = n => `https://server.arcgisonline.com/ArcGIS/rest/services/${n}/MapServer/tile/{z}/{y}/{x}`;
 const darkMQ = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : {matches:false};
+const themePref = () => { try{ return JSON.parse(localStorage.getItem("pm_theme"))||"auto"; }catch{ return "auto"; } };
+const isDark = () => { const t=themePref(); return t==="dark" || (t!=="light" && darkMQ.matches); };
 let mapStyle="calles", tileLayers=[];
 function setMapStyle(style){
   if(!map) return;
   mapStyle=style;
   tileLayers.forEach(l=>map.removeLayer(l)); tileLayers=[];
-  const dk = style==="calles" && darkMQ.matches ? "dkmap" : "";
+  const dk = style==="calles" && isDark() ? "dkmap" : "";
   const OSM = ["https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,attribution:"© OpenStreetMap",className:dk}];
   const EST = [ESRI("World_Street_Map"),{maxZoom:19,maxNativeZoom:16,attribution:"© Esri · OpenStreetMap",className:dk}];
   let list;
@@ -400,7 +412,7 @@ function setMapStyle(style){
   });
   $("#stylebtn").textContent = style==="satelite" ? "🗺️ Calles" : "🛰️ Satélite";
 }
-darkMQ.addEventListener?.("change",()=>{ if(mapStyle==="calles") setMapStyle("calles"); });
+darkMQ.addEventListener?.("change",()=>{ setThemeColor(); if(mapStyle==="calles") setMapStyle("calles"); });
 
 const MOTO_SVG='<svg viewBox="6 4 108 72" width="24" height="16" aria-hidden="true" style="--a:currentColor"><g fill="var(--a)" stroke="var(--a)" stroke-linecap="round" stroke-linejoin="round"><circle cx="26" cy="58" r="13.5" fill="none" stroke-width="5"/><circle cx="26" cy="58" r="7.5" fill="none" stroke-width="1.5"/><circle cx="26" cy="58" r="2.6" stroke="none"/><circle cx="96" cy="58" r="13.5" fill="none" stroke-width="5"/><circle cx="96" cy="58" r="7.5" fill="none" stroke-width="1.5"/><circle cx="96" cy="58" r="2.6" stroke="none"/><path d="M26 51v14M19 58h14M96 51v14M89 58h14" stroke-width="1.1"/><path d="M26 58 L50 53" stroke-width="4" fill="none"/><path d="M84 42 Q96 35.5 108 43" fill="none" stroke-width="2.6"/><path d="M82 25 L96 58" stroke-width="4.6" fill="none"/></g><g fill="var(--a)" stroke="var(--b)" stroke-width="1.6" stroke-linejoin="round"><path d="M60 57 C54 62 46 62 40 57" fill="none" stroke="var(--a)" stroke-width="3.2" stroke-linecap="round"/><rect x="14" y="40" width="24" height="7.5" rx="3.75" transform="rotate(-12 26 43.75)"/><path d="M30 37 H54 L48 47 H36 Z"/><path d="M43 41 H63 L68 48 L64 57 H47 L41 49 Z"/><path d="M10 30.5 L27 32 L27 37 L17 39.5 Z"/><path d="M25 33.5 C33 29 43 29 51 32 L50 37 H27 Z"/><path d="M51 38 C53 28 63 23 77 25 L81 30 L77 38 Z"/><circle cx="87" cy="30" r="5.4"/></g><g fill="none" stroke-linecap="round"><path d="M73 18 L86 22" stroke="var(--a)" stroke-width="3"/><path d="M78 20 L76 12" stroke="var(--a)" stroke-width="1.6"/><ellipse cx="75.6" cy="10.5" rx="3" ry="2" fill="var(--a)"/><path d="M57 31 C63 28 69 27 76 28" stroke="var(--b)" stroke-width="1.6"/><path d="M47 46h15M46 50h16M48 54h12" stroke="var(--b)" stroke-width="1.1"/><circle cx="87" cy="30" r="2.4" fill="var(--b)"/></g></svg>';
 const icon = cls => L.divIcon({className:"", html:`<div class="${cls}"></div>`, iconSize:[18,18], iconAnchor:[9,9]});
@@ -2383,6 +2395,25 @@ window.addEventListener("click", e=>{
 
 kick(600);
 }
+
+/* ================= Apariencia: automático, claro u oscuro ================= */
+function setThemeColor(){ const m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=isDark()?"#0f1b3d":"#ffcc00"; }
+function applyTheme(t){
+  try{ localStorage.setItem("pm_theme", JSON.stringify(t)); }catch{}
+  if(t==="light"||t==="dark") document.documentElement.dataset.theme=t; else delete document.documentElement.dataset.theme;
+  setThemeColor(); if(map && mapStyle==="calles") setMapStyle("calles"); render();
+}
+const _menuTheme=OV.menu;
+OV.menu = () => { const t=themePref();
+  return _menuTheme().replace('<div class="list">', `<div class="themepick"><span>${isDark()?"🌙":"☀️"} Apariencia</span><div class="cur" role="group" aria-label="Apariencia">
+    <button data-theme-set="auto" aria-pressed="${t==="auto"}">Auto</button><button data-theme-set="light" aria-pressed="${t==="light"}">☀️ Claro</button><button data-theme-set="dark" aria-pressed="${t==="dark"}">🌙 Oscuro</button></div></div><div class="list">`); };
+window.addEventListener("click", e=>{
+  const b=e.target.closest("[data-theme-set]"); if(!b) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  applyTheme(b.dataset.themeSet);
+  toast({auto:"Apariencia automática: sigue la del celular",light:"Modo claro activado",dark:"Modo oscuro activado"}[b.dataset.themeSet]);
+}, true);
+setThemeColor();
 
 /* ================= Arranque ================= */
 if(API && !SAVED.token){ SAVED.user=null; save("user"); }
