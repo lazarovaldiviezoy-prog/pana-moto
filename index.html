@@ -274,6 +274,20 @@ button.av{border:0;cursor:pointer;flex:none}
 textarea.inp{resize:vertical;min-height:70px;line-height:1.4}
 .trow{width:100%;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
 .trow > span{min-width:0}
+.av{overflow:hidden}
+.av img,.bigav img{width:100%;height:100%;object-fit:cover;display:block}
+.photobtns{grid-column:1/-1;display:flex;gap:6px}
+.photobtns label{flex:1;padding:9px 6px;font-size:.86rem;cursor:pointer;border-radius:10px}
+.photobtns label:active{transform:scale(.98)}
+.colorchip{display:inline-flex;align-items:center;gap:6px}
+.colorchip i{width:14px;height:14px;border-radius:50%;border:1px solid var(--line);flex:none}
+.mopic .mp{background:var(--accent);overflow:hidden}
+.mopic .mp img{width:100%;height:100%;object-fit:cover;display:block}
+.mopic small{display:block}
+.mopic small .plate{font-size:.8rem;padding:1px 6px}
+.profbox{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px}
+.profbox small{display:block;color:var(--muted);font-size:.82rem}
+.bigav{width:76px;height:76px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--display);font-size:1.8rem;overflow:hidden;flex:none}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -1023,12 +1037,12 @@ document.addEventListener("click", e=>{
       SAVED.token = r.token; save("token"); setUserFromServer(r.user);
       if(r.user.driver) S.dreg = null; else { S.dreg.step = 2; if(!S.dreg.name && r.user.name) S.dreg.name = r.user.name; } }); }
   if(t.id==="dr-finish"){ const r = S.dreg;
-    const need = ["cedula","selfie","licencia","carnet","rcv","moto"].filter(k=>!S.dregFiles[k]);
+    const need = ["perfil","cedula","selfie","licencia","carnet","rcv","moto"].filter(k=>!S.dregFiles[k]);
     if(need.length) return stop("Estamos procesando tus fotos. Intenta de nuevo en un segundo.");
     return run(async()=>{
       const fd = new FormData();
       Object.entries({full_name:r.name.trim(), ci:r.ci.trim(), sex:r.sex, model:r.model.trim(), plate:r.plate.trim(),
-        bank:r.bank.trim(), pay_phone:r.payPhone, pay_ci:r.payCi, plan:r.plan}).forEach(([k,v])=>fd.append(k,v));
+        bank:r.bank.trim(), pay_phone:r.payPhone, pay_ci:r.payCi, plan:r.plan, moto_color:r.color||""}).forEach(([k,v])=>fd.append(k,v));
       Object.entries(S.dregFiles).forEach(([k,b])=>fd.append(k, b, k+".jpg"));
       await api("/drivers/register",{method:"POST",form:fd});
       setUserFromServer(await api("/me"));
@@ -1485,7 +1499,7 @@ document.addEventListener("click",e=>{
 /* ================= Fase 2: viajes en vivo con el servidor ================= */
 if(API){
 const PAL=["#1d3a8a","#b4532a","#16804a","#7a3fa0","#c2410c","#0f766e","#7b1e3a","#334155"];
-const dOf = r => ({id:r.id, n:r.name, first:r.first, c:PAL[r.id%PAL.length], moto:r.model, plate:r.plate, r:r.rating, v:r.trips,
+const dOf = r => ({id:r.id, n:r.name, first:r.first, c:PAL[r.id%PAL.length], moto:r.model+(r.moto_color?" · "+r.moto_color:""), color:r.moto_color||"", photo:r.photo_url?API+r.photo_url:"", motoPhoto:r.moto_url?API+r.moto_url:"", plate:r.plate, r:r.rating, v:r.trips,
   g:r.sex==="Mujer"?"f":"m", bank:r.bank||"", payPhone:r.pay_phone||"", payCi:r.pay_ci||"", phone:r.phone||""});
 const pl = p => ({lat:+p.lat, lng:+p.lng, name:String(p.name||"Punto en el mapa").slice(0,160)});
 const hhmm = iso => iso ? new Date(iso).toLocaleTimeString("es-VE",{hour:"2-digit",minute:"2-digit"}) : "";
@@ -2272,6 +2286,100 @@ window.addEventListener("click", e=>{
 }, true);
 
 api("/config").then(c=>{ S.support=c.support_phone||""; }).catch(()=>{});
+
+/* ================= Fase 5: cámara, color de la moto y fotos del motorizado ================= */
+Object.assign(S,{dprof:null, pcolor:"", pfiles:{}, pthumb:{}});
+const COLORS=[["Negra","#1b1b1b"],["Roja","#c62828"],["Azul","#1e4fbf"],["Blanca","#f4f4f4"],["Gris","#8a8f98"],["Plateada","#c9ced6"],
+  ["Verde","#2e7d32"],["Amarilla","#f2c230"],["Naranja","#ef6c00"],["Morada","#6a3fa0"],["Marrón","#6d4c41"]];
+const colorChips=(sel,attr)=>`<div class="row">${COLORS.map(([n,c])=>`<button class="chip colorchip" ${attr}="${n}" aria-pressed="${sel===n}"><i style="background:${c}"></i>${n}</button>`).join("")}</div>`;
+const photoBtns=(id,k,front,attr="data-doc")=>`<div class="photobtns"><label class="ghost" for="${id}c-${k}">📷 Cámara</label><label class="ghost" for="${id}g-${k}">🖼️ Galería</label>
+  <input id="${id}c-${k}" type="file" accept="image/*" capture="${front?"user":"environment"}" ${attr}="${k}" class="vh">
+  <input id="${id}g-${k}" type="file" accept="image/*" ${attr}="${k}" class="vh"></div>`;
+DOCS.unshift(["perfil","Foto de perfil (tu cara, sin lentes oscuros ni casco)"]);
+REQUIRED_DOCS.push("perfil");
+DOC_LABEL.perfil="Perfil";
+
+/* Cada foto del registro: Cámara o Galería */
+docRow = function(k,label){
+  const ok=S.dreg.docs[k], th=S.docThumbs[k];
+  return `<div class="doc ${ok?"ok":""}"><span class="th">${th?`<img src="${th}" alt="">`:"📷"}</span>
+    <span><b>${label}</b><small>${ok?"Foto lista":"Tómala con la cámara o elige una de tu galería"}</small></span><span class="st">${ok?"✓":""}</span>
+    ${photoBtns("f",k,k==="selfie"||k==="perfil")}
+    <input id="f-${k}" type="file" accept="image/*" data-doc="${k}" class="vh" tabindex="-1" aria-hidden="true"></div>`;
+};
+const _dreg5=dregView;
+dregView = () => _dreg5().replace(/(<input id="dr-plate"[^>]*>)/,
+  `$1<div class="lbl">Color de la moto</div>${colorChips(S.dreg?.color,"data-mcolor")}`);
+
+/* Pasajero: foto del motorizado y de su moto */
+const _offers5=offers;
+offers = () => { let h=_offers5();
+  S.offers.forEach((o,i)=>{ if(o.d.photo) h=h.replace(new RegExp(`(<button class="av" data-prof="${i}"[^>]*>)[^<]*(</button>)`),`$1<img src="${o.d.photo}" alt="">$2`); });
+  return h; };
+const _trip5=trip;
+trip = () => { const d=S.chosen.d; let h=_trip5();
+  if(d.photo) h=h.replace(/(<div class="av"[^>]*>)[^<]*(<\/div>)/,`$1<img src="${d.photo}" alt="Foto de ${esc(d.first)}">$2`);
+  h=h.replace('<div class="status">',`<div class="mopic"><div class="mp">${d.motoPhoto?`<img src="${d.motoPhoto}" alt="Foto de la moto">`:MOTO_SVG}</div>
+    <div><b>Busca esta moto</b><small>${esc(d.moto)}</small><small>Placa <b class="plate">${esc(d.plate)}</b></small></div></div><div class="status">`);
+  return h; };
+const _prof5=OV.profile;
+OV.profile = () => { const d=S.profile; let h=_prof5();
+  if(d.photo) h=h.replace(/(<div class="av"[^>]*>)[^<]*(<\/div>)/,`$1<img src="${d.photo}" alt="">$2`);
+  if(d.motoPhoto) h=h.replace(/<div class="mp"[^>]*>[\s\S]*?<\/svg><\/div>/,`<div class="mp"><img src="${d.motoPhoto}" alt="Foto de la moto"></div>`);
+  return h; };
+
+/* Motorizado: Mi perfil */
+const _dash5=dashView;
+dashView = () => { let h=_dash5(); const pr=S.feed?.profile;
+  if(S.feed && !S.feed.active && pr && (!pr.has_photo || !pr.moto_color))
+    h=h.replace('<div class="wallet',`<div class="pushcard"><b>👤 Completa tu perfil</b><span>Agrega tu foto y el color de tu moto. Los pasajeros confían más y aceptan tus ofertas más rápido.</span><button class="cta" data-ov="dprofile">Completar mi perfil</button></div><div class="wallet`);
+  return h; };
+const _menu5=OV.menu;
+OV.menu = () => _menu5().replace('<button data-ov="sos">', SAVED.driver?.serverId?`<button data-ov="dprofile">👤 Mi perfil de motorizado<span>Foto y color</span></button><button data-ov="sos">`:'<button data-ov="sos">');
+OV.dprofile = () => {
+  const head=ovHead("Mi perfil de motorizado"), pr=S.dprof;
+  if(!pr){ api("/driver/profile").then(r=>{ S.dprof=r; S.pcolor=r.moto_color||""; if(S.overlay==="dprofile") render(); }).catch(e=>{ toast(e.message); S.overlay=null; render(); });
+    return head+loadingTxt("Cargando tu perfil…"); }
+  const ph=S.pthumb.perfil||(pr.photo_url?API+pr.photo_url:""), mo=S.pthumb.moto||(pr.moto_url?API+pr.moto_url:"");
+  return head+`<p class="hint">Esto es lo que ven los pasajeros cuando les ofertas y durante el viaje.</p>
+  <div class="profbox"><div class="bigav">${ph?`<img src="${ph}" alt="Tu foto">`:esc((pr.first||"?")[0])}</div>
+    <div><b>${esc(pr.name)}</b><small>★ ${pr.rating} · ${pr.trips} viajes</small><small>${esc(pr.model)}${S.pcolor?" · "+S.pcolor:""} · <b>${esc(pr.plate)}</b></small></div></div>
+  <div class="lbl">Tu foto de perfil</div>
+  <p class="hint">Tu cara de frente, con buena luz, sin casco ni lentes oscuros.</p>
+  ${photoBtns("p","perfil",true,"data-pdoc")}
+  <div class="lbl">Color de tu moto</div>
+  ${colorChips(S.pcolor,"data-pcolor")}
+  <div class="lbl">Foto de tu moto</div>
+  <div class="mopic"><div class="mp">${mo?`<img src="${mo}" alt="Tu moto">`:MOTO_SVG}</div><div><small>De lado, con la placa visible.</small></div></div>
+  ${photoBtns("p","moto",false,"data-pdoc")}
+  <button class="cta" id="pSave">Guardar perfil</button>`;
+};
+
+/* Eventos */
+document.addEventListener("change", e=>{
+  const k=e.target.dataset?.pdoc, f=e.target.files?.[0];
+  if(k && f){ compressImg(f).then(b=>{ S.pfiles[k]=b; }); try{ S.pthumb[k]=URL.createObjectURL(f); }catch{} render(); }
+});
+window.addEventListener("click", e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset, stop=()=>{ e.stopImmediatePropagation(); e.preventDefault(); };
+  if(d.mcolor){ stop(); S.dreg.color=d.mcolor; render(); return; }
+  if(t.id==="dr-next" && S.dreg?.step===4 && !S.dreg.color){ stop(); return toast("Elige el color de tu moto"); }
+  if(d.ov==="dprofile"){ S.dprof=null; S.pfiles={}; S.pthumb={}; return; }
+  if(d.pcolor){ stop(); S.pcolor=d.pcolor; render(); return; }
+  if(t.id==="pSave"){ stop();
+    if(!S.pcolor) return toast("Elige el color de tu moto");
+    if(!S.dprof.photo_url && !S.pfiles.perfil) return toast("Agrega tu foto de perfil");
+    withBusy(t, async()=>{
+      const fd=new FormData(); fd.append("moto_color",S.pcolor);
+      Object.entries(S.pfiles).forEach(([k,b])=>fd.append(k,b,k+".jpg"));
+      const r=await fetch(API+"/driver/profile",{method:"PUT",headers:{Authorization:"Bearer "+SAVED.token},body:fd});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(typeof j.detail==="string"?j.detail:"No se pudo guardar. Intenta de nuevo.");
+      S.dprof=null; S.pfiles={}; S.pthumb={}; S.overlay=null; S.feedSig=""; toast("Perfil guardado. Así te ven los pasajeros."); kick(200);
+    });
+  }
+}, true);
 
 kick(600);
 }
