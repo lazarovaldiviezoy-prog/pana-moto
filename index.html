@@ -272,6 +272,8 @@ button.av{border:0;cursor:pointer;flex:none}
 .kpis small{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .kpis b{font-family:var(--display);font-size:1.2rem;font-variant-numeric:tabular-nums}
 textarea.inp{resize:vertical;min-height:70px;line-height:1.4}
+.trow{width:100%;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.trow > span{min-width:0}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -2121,6 +2123,155 @@ window.addEventListener("click", e=>{
 
 loadConfig();
 if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.ready.then(()=>syncPush()).catch(()=>{});
+
+/* ================= Fase 4: ayuda, reportes e historial de viajes ================= */
+Object.assign(S,{support:"", repTrip:null, repCat:"", myReports:null});
+Object.assign(S.adm,{trips:null, tripF:"", tripQ:"", trip:null, reps:null, repF:"open"});
+const CAT_P=["Me cobraron de más","El motorizado no llegó","Mal trato o conducta","Olvidé un objeto","Problema de seguridad","Otro"];
+const CAT_D=["El pasajero no pagó","El pasajero no apareció","Mal trato o conducta","Problema con mi saldo","Otro"];
+const CAT_G=["Problema con la app","Mi cuenta","Sugerencia","Otro"];
+const waLink = (phone, text="") => `https://wa.me/${waNum(phone)}${text?`?text=${encodeURIComponent(text)}`:""}`;
+const STATUS_ES={searching:"Buscando",accepted:"En camino",arrived:"Llegó",ongoing:"En viaje",completed:"Terminado",cancelled:"Cancelado",expired:"Vencido"};
+const statusTag = st => `<span class="tag ${st==="completed"?"same":["cancelled","expired"].includes(st)?"pk":"up"}">${STATUS_ES[st]||st}</span>`;
+
+const _loadConfig=loadConfig;
+loadConfig = async function(){
+  try{ const c=await api("/config"); S.support=c.support_phone||""; }catch{}
+  return _loadConfig();
+};
+
+/* ---------- Ayuda y soporte (usuarios) ---------- */
+function openHelp(tripId){ S.repTrip=tripId||null; S.repCat=""; S.myReports=null; S.overlay="help"; render(); sheet.scrollTop=0;
+  api("/config").then(c=>{ const was=S.support; S.support=c.support_phone||""; if(S.support!==was && S.overlay==="help") render(); }).catch(()=>{}); }
+OV.help = () => {
+  const cats = S.repTrip ? (S.mode==="con" ? CAT_D : CAT_P) : (SAVED.driver?.status==="approved" && S.mode==="con" ? [...CAT_D.slice(0,4),...CAT_G] : CAT_G.concat(["Problema con un viaje"]));
+  if(!S.myReports && SAVED.token){ S.myReports=[]; api("/reports/mine").then(r=>{ S.myReports=r; if(S.overlay==="help") render(); }).catch(()=>{}); }
+  return ovHead(S.repTrip?`Reportar el viaje #${S.repTrip}`:"Ayuda y soporte")+`
+  ${S.support?`<a class="cta" style="display:block;text-align:center;text-decoration:none" href="${waLink(S.support,"Hola, necesito ayuda con Pana Moto"+(S.repTrip?` (viaje #${S.repTrip})`:""))}" target="_blank" rel="noopener">💬 Escribir a soporte por WhatsApp</a>
+    <p class="hint" style="text-align:center">Soporte: <b>${esc(S.support)}</b></p>`:""}
+  <div class="lbl">${S.repTrip?"¿Qué pasó en este viaje?":"Reportar un problema"}</div>
+  <div class="row">${cats.map(c=>`<button class="chip" data-rcat="${esc(c)}" aria-pressed="${S.repCat===c}">${esc(c)}</button>`).join("")}</div>
+  <textarea id="repText" class="inp" rows="4" maxlength="1000" placeholder="Cuéntanos qué pasó, con el mayor detalle posible"></textarea>
+  <button class="cta" id="repSend">Enviar reporte</button>
+  <p class="hint">Te respondemos por aquí y te llega un aviso. Si es una emergencia, llama al <b>911</b>.</p>
+  ${S.myReports?.length?`<div class="lbl">Mis reportes</div>`+S.myReports.map(r=>`<div class="hist">
+    <div class="top"><strong>${esc(r.category)}${r.trip_id?` · viaje #${r.trip_id}`:""}</strong><span class="tag ${r.status==="resolved"?"same":"up"}">${r.status==="resolved"?"Respondido":"En revisión"}</span></div>
+    <span class="hint">${fmtDate(Date.parse(r.created_at))} · ${esc(short(r.text,90))}</span>
+    ${r.admin_note?`<div class="note">💬 <b>Pana Moto:</b> ${esc(r.admin_note)}</div>`:""}</div>`).join(""):""}`;
+};
+const _menu4=OV.menu;
+OV.menu = () => _menu4().replace('<button data-ov="sos">','<button id="helpBtn">🆘 Ayuda y soporte<span>Reportar un problema</span></button><button data-ov="sos">');
+const _done4=done;
+done = () => _done4().replace('<button class="cta" id="again">', `<button class="link" data-report="${S.srv?.id||""}">Reportar un problema con este viaje</button><button class="cta" id="again">`);
+const _dtrip4=driverTrip;
+driverTrip = t => _dtrip4(t).replace('<button class="cta" id="dRateDone">', `<button class="link" data-report="${t.id}">Reportar un problema con este viaje</button><button class="cta" id="dRateDone">`)
+  .replace('<button class="link" id="dCancelAsk">', `<button class="link" data-report="${t.id}">Reportar un problema</button><button class="link" id="dCancelAsk">`);
+const _hist4=OV.history;
+OV.history = () => _hist4().replace(/<button class="ghost" data-srepeat="(\d+)">↻ Repetir viaje<\/button>/g,
+  (m,i)=>`<div class="row nw"><button class="ghost" data-srepeat="${i}">↻ Repetir</button><button class="ghost" data-report="${S.srvHist?.[+i]?.id||""}">Reportar</button></div>`);
+
+/* ---------- Panel de administrador: Viajes y Reportes ---------- */
+TABS.splice(1,0,["viajes","Viajes"],["reportes","Reportes"]);
+function admViajes(){
+  if(S.adm.trip) return admViaje(S.adm.trip);
+  const chips=[["","Todos"],["active","Activos"],["completed","Terminados"],["cancelled","Cancelados"]].map(([k,l])=>`<button class="chip" data-tf="${k}" aria-pressed="${S.adm.tripF===k}">${l}</button>`).join("");
+  const form=`<div class="row">${chips}</div><div class="search"><input id="tq" class="inp" placeholder="Nombre, teléfono o #número de viaje" value="${esc(S.adm.tripQ)}" autocomplete="off"><button class="ghost" id="tSearch" style="width:auto">Buscar</button></div>`;
+  if(!S.adm.trips){ admLoad("trips",`/admin/trips?status=${S.adm.tripF}&q=${encodeURIComponent(S.adm.tripQ)}`); return form+loadingTxt("Cargando viajes…"); }
+  return form+(S.adm.trips.length ? S.adm.trips.map(t=>`<button class="hrow trow" data-trip="${t.id}"><span><b>#${t.id} · ${esc(t.passenger)}</b>${t.driver?` con ${esc(t.driver)}`:""}
+      <small>${esc(short(t.from,24))} → ${esc(short(t.to,24))} · ${fmtDate(Date.parse(t.created_at))}${t.reports?` · <span style="color:var(--bad)">⚠️ ${t.reports} reporte${t.reports>1?"s":""}</span>`:""}</small></span>
+      <b>${fmtUSD(t.usd)} ${statusTag(t.status)}</b></button>`).join("")
+    : `<p class="hint">No hay viajes con ese filtro.</p>`);
+}
+function admViaje(id){
+  const t=S.adm.tripDet;
+  if(!t || t.id!==id){ if(!S.adm.busy.det){ S.adm.busy.det=true; api(`/admin/trips/${id}`,{admin:true}).then(r=>{ S.adm.tripDet=r; }).catch(e=>{ toast(e.message); S.adm.trip=null; }).finally(()=>{ S.adm.busy.det=false; if(S.overlay==="admin") render(); }); }
+    return `<button class="link" id="tBack">← Volver a viajes</button>`+loadingTxt("Cargando viaje…"); }
+  const P=t.passenger, D=t.driver, line=(l,v)=>v?`<span>${l}</span><span>${v}</span>`:"";
+  const tl=[["Pedido",t.created_at],["Aceptado",t.accepted_at],["Llegó",t.arrived_at],["Inició",t.started_at],["Terminó",t.completed_at]].filter(x=>x[1]);
+  return `<button class="link" id="tBack">← Volver a viajes</button>
+  <div class="top" style="display:flex;justify-content:space-between;align-items:center"><h2>Viaje #${t.id}</h2>${statusTag(t.status)}</div>
+  <div class="route"><b>De:</b> ${esc(t.from.name)}${(t.stops||[]).map((s,i)=>`<br><b>Parada ${i+1}:</b> ${esc(s.name)}`).join("")}<br><b>A:</b> ${esc(t.to.name)}<br><span class="hint">${(+t.km||0).toFixed(1)} km · ${t.svc==="encomienda"?"📦 Encomienda":"🏍️ Viaje"}${t.women_only?" · Pidió motorizada":""}</span></div>
+  <div class="sum">${line("Oferta inicial",fmtUSD(t.offer_usd))}${line("Precio acordado",t.final_usd?fmtUSD(t.final_usd):"")}${line("Propina",t.tip_usd?fmtUSD(t.tip_usd):"")}
+    ${line("Comisión Pana Moto",t.status==="completed"?fmtUSD(t.commission_usd):"")}${line("Pago",esc(payTextT(t,t.final_usd||t.offer_usd)))}
+    ${line("Calificó al motorizado",t.rating_by_passenger?"★".repeat(t.rating_by_passenger):"")}${line("Calificó al pasajero",t.rating_by_driver?"★".repeat(t.rating_by_driver):"")}
+    ${line("Canceló",t.cancelled_by?(t.cancelled_by==="p"?"El pasajero":"El motorizado")+(t.cancel_reason?`: ${esc(t.cancel_reason)}`:""):"")}</div>
+  <div class="lbl">Personas</div>
+  <div class="hrow"><span><b>Pasajero:</b> ${esc(P.name)} · ★ ${P.rating}<small>+${esc(P.phone)}</small></span><a class="link" href="${waLink(P.phone)}" target="_blank" rel="noopener">WhatsApp</a></div>
+  ${D?`<div class="hrow"><span><b>Motorizado:</b> ${esc(D.name)} · ${esc(D.plate)}<small>${esc(D.model)} · +${esc(D.phone)}</small></span><a class="link" href="${waLink(D.phone)}" target="_blank" rel="noopener">WhatsApp</a></div>`:""}
+  <div class="lbl">Línea de tiempo</div>
+  <div class="sum">${tl.map(([l,v])=>`<span>${l}</span><span>${hhmm(v)} · ${new Date(v).toLocaleDateString("es-VE",{day:"2-digit",month:"short"})}</span>`).join("")}</div>
+  ${t.all_offers.length?`<div class="lbl">Ofertas (${t.all_offers.length})</div>`+t.all_offers.map(o=>`<div class="hrow"><span>${esc(o.driver)}<small>${hhmm(o.at)} · llega en ${o.eta_min} min</small></span><b>${fmtUSD(o.amount_usd)} <span class="tag ${o.status==="accepted"?"same":"up"}">${{accepted:"Aceptada",pending:"Pendiente",rejected:"Rechazada",withdrawn:"Retirada"}[o.status]||o.status}</span></b></div>`).join(""):""}
+  <div class="lbl">Chat (${t.messages.length})</div>
+  ${t.messages.length?`<div class="chat"><div class="msgs" style="max-height:none">${t.messages.map(m=>`<div class="msg ${m.from==="d"?"mine":""}"><b style="font-size:.72rem;opacity:.75">${m.from==="d"?"Motorizado":"Pasajero"}</b><br>${esc(m.text)}<small>${hhmm(m.at)}</small></div>`).join("")}</div></div>`:`<p class="hint">Sin mensajes.</p>`}
+  ${t.reports_list.length?`<div class="lbl">Reportes de este viaje</div>`+t.reports_list.map(r=>repCard(r,false)).join(""):""}`;
+}
+function repCard(r, actions=true){
+  return `<div class="req">
+    <div class="top"><strong>${esc(r.category)}</strong>${r.status==="resolved"?`<span class="tag same">Resuelto</span>`:`<span class="tag up">Abierto</span>`}</div>
+    <div class="route"><b>${esc(r.user.name)}</b> (${r.role==="d"?"motorizado":"pasajero"}) · <a class="link" href="${waLink(r.user.phone)}" target="_blank" rel="noopener">+${esc(r.user.phone)}</a>
+      ${r.trip_id?` · <button class="link" data-trip="${r.trip_id}" style="display:inline;padding:0">Ver viaje #${r.trip_id}</button>`:""}<br><span class="hint">${fmtDate(Date.parse(r.created_at))}</span></div>
+    <div class="note" style="color:var(--ink)">${esc(r.text)}</div>
+    ${r.admin_note?`<div class="note">💬 <b>Tu respuesta:</b> ${esc(r.admin_note)}</div>`:""}
+    ${actions&&r.status==="open"?`<textarea id="rep-${r.id}" class="inp" rows="2" maxlength="400" placeholder="Respuesta para el usuario (le llega como aviso)"></textarea>
+      <button class="cta" data-resolve="${r.id}">Responder y marcar resuelto</button>`:""}</div>`;
+}
+function admReportes(){
+  const chips=[["open","Abiertos"],["resolved","Resueltos"]].map(([k,l])=>`<button class="chip" data-rf="${k}" aria-pressed="${S.adm.repF===k}">${l}</button>`).join("");
+  if(!S.adm.reps){ admLoad("reps",`/admin/reports?status=${S.adm.repF}`); return `<div class="row">${chips}</div>`+loadingTxt("Cargando reportes…"); }
+  return `<div class="row">${chips}</div>`+(S.adm.reps.length ? S.adm.reps.map(r=>repCard(r)).join("") : `<p class="hint">${S.adm.repF==="open"?"No hay reportes abiertos. 🎉":"Aún no hay reportes resueltos."}</p>`);
+}
+const _ajustes4=admAjustes;
+admAjustes = () => { const s=S.adm.summary; if(!s||s.error) return _ajustes4();
+  const wa=s.whatsapp||{};
+  return _ajustes4().replace('<button class="link" id="admOut">', `
+  <div class="lbl">Soporte</div>
+  <div class="search"><input id="supp" class="inp" inputmode="tel" placeholder="WhatsApp de soporte, ej. 0412-1234567" value="${esc(s.settings.support_phone||"")}" autocomplete="off"><button class="ghost" id="admSupp" style="width:auto">Guardar</button></div>
+  <div class="lbl">Código por WhatsApp</div>
+  <p class="hint">${wa.configured?"✅ Conectado con tu n8n.":"⚪ Sin conectar: falta <b>WHATSAPP_WEBHOOK_URL</b> en Railway."} ${wa.dev_mode?"Modo prueba activo: el código también sale en pantalla (DEV_MODE=1).":"Modo real: el código solo llega por WhatsApp."}</p>
+  <div class="search"><input id="waTest" class="inp" inputmode="tel" placeholder="Tu celular para la prueba" autocomplete="off"><button class="ghost" id="admWa" style="width:auto">Probar</button></div>
+  <button class="link" id="admOut">`);
+};
+adminReal = function(){
+  const head=ovHead("Panel de administrador");
+  if(!SAVED.adminKey) return head+`<p class="hint">Escribe la clave de administrador que configuraste en Railway (ADMIN_KEY).</p>
+    <input id="admkey" class="inp" type="password" placeholder="Clave de administrador" autocomplete="current-password"><button class="cta" id="admLogin">Entrar</button>`;
+  if(S.adm.lastTab!==S.adm.tab){ S.adm.lastTab=S.adm.tab; S.adm.trip=null; S.adm.trips=null; S.adm.reps=null; }
+  if(!S.adm.summary) admLoad("summary","/admin/summary");
+  const s=S.adm.summary, badge={aprobar:s?.drivers_pending, recargas:s?.recharges_pending, reportes:s?.reports_open};
+  const tabs=`<div class="tabs">${TABS.map(([k,l])=>`<button data-atab="${k}" aria-pressed="${S.adm.tab===k}">${l}${badge[k]?` <i>${badge[k]}</i>`:""}</button>`).join("")}</div>`;
+  const body={resumen:admResumen, viajes:admViajes, reportes:admReportes, aprobar:admAprobar, recargas:admRecargas, usuarios:admUsuarios, ajustes:admAjustes}[S.adm.tab]||admResumen;
+  return head+tabs+body();
+};
+
+/* ---------- Eventos ---------- */
+window.addEventListener("click", e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset, val=id=>($("#"+id)?.value||"").trim();
+  const stop=()=>{ e.stopImmediatePropagation(); e.preventDefault(); };
+  const run=fn=>{ stop(); withBusy(t, fn); };
+  if(t.id==="helpBtn"){ stop(); openHelp(null); return; }
+  if(d.report!==undefined && S.overlay!=="admin"){ stop(); openHelp(+d.report||null); return; }
+  if(d.rcat){ stop(); S.repCat=d.rcat; const txt=$("#repText")?.value||""; render(); const ta=$("#repText"); if(ta) ta.value=txt; return; }
+  if(t.id==="repSend"){ const text=val("repText");
+    if(!S.repCat){ stop(); return toast("Elige qué tipo de problema es"); }
+    if(text.length<5){ stop(); return toast("Cuéntanos un poco más de lo que pasó"); }
+    return run(async()=>{ await api("/reports",{method:"POST",body:{trip_id:S.repTrip, category:S.repCat, text}}); S.repCat=""; S.myReports=null;
+      toast("Reporte enviado. Te avisaremos cuando respondamos."); }); }
+  if(S.overlay!=="admin") return;
+  if(d.tf!==undefined){ stop(); S.adm.tripF=d.tf; S.adm.trips=null; render(); return; }
+  if(t.id==="tSearch"){ stop(); S.adm.tripQ=val("tq"); S.adm.trips=null; render(); return; }
+  if(d.trip){ stop(); S.adm.tab="viajes"; S.adm.lastTab="viajes"; S.adm.trip=+d.trip; S.adm.tripDet=null; render(); sheet.scrollTop=0; return; }
+  if(t.id==="tBack"){ stop(); S.adm.trip=null; render(); return; }
+  if(d.rf){ stop(); S.adm.repF=d.rf; S.adm.reps=null; render(); return; }
+  if(d.resolve) return run(async()=>{ await api(`/admin/reports/${d.resolve}/resolve`,{method:"POST",admin:true,body:{note:val("rep-"+d.resolve)}});
+    toast("Reporte resuelto. Le avisamos al usuario."); S.adm.reps=null; S.adm.summary=null; S.adm.tripDet=null; });
+  if(t.id==="admSupp") return run(async()=>{ await putSettings({support_phone:val("supp")}); S.support=val("supp"); toast("Número de soporte guardado"); });
+  if(t.id==="admWa"){ if(digits(val("waTest")).length<9){ stop(); return toast("Escribe tu número de celular"); }
+    return run(async()=>{ const r=await api("/admin/whatsapp/test",{method:"POST",admin:true,body:{phone:val("waTest")}});
+      toast(!r.configured?"Falta WHATSAPP_WEBHOOK_URL en Railway":r.sent?"Mensaje enviado. Revisa tu WhatsApp.":"n8n no respondió bien. Revisa el flujo y el token."); }); }
+}, true);
+
+api("/config").then(c=>{ S.support=c.support_phone||""; }).catch(()=>{});
 
 kick(600);
 }

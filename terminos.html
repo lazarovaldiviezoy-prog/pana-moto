@@ -7,7 +7,7 @@
 <title>Términos y Privacidad · Pana Moto</title>
 <link rel="icon" href="icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Figtree:wght@400;600;700&display=swap">
-<!-- BORRADOR: revisar con un abogado en Venezuela antes del lanzamiento. Cambia el contacto de soporte al final. -->
+<!-- BORRADOR: revisar con un abogado en Venezuela antes del lanzamiento. El número de soporte se toma del panel de administrador. -->
 <style>
 :root{--bg:#f6f1ef;--surface:#fff;--ink:#2a1018;--muted:#6e5a60;--line:#e8dcd9;--accent:#7b1e3a;--gold:#e8b84a;color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--bg:#150a0f;--surface:#211218;--ink:#f6ecee;--muted:#c2aab1;--line:#422833;--accent:#f0c35a;color-scheme:dark}}
@@ -95,7 +95,12 @@ ul{padding-left:22px}
 <p>Podemos actualizar estas condiciones. Si el cambio es importante, te avisaremos en la app.</p>
 
 <h2>12. Contacto</h2>
-<p>Para dudas, reclamos o para pedir tus datos, escríbenos por WhatsApp al soporte de Pana Moto: <b>0412-000-0000</b>.</p>
+<p>Para dudas, reclamos o para pedir tus datos, escríbenos por WhatsApp al soporte de Pana Moto: <b id="supp">desde el menú de la app → Ayuda y soporte</b>.</p>
 </main>
+<script>
+fetch("https://pana-moto-api-production.up.railway.app/config").then(r=>r.json()).then(c=>{
+  if(c.support_phone){ const el=document.getElementById("supp"); el.textContent=c.support_phone; }
+}).catch(()=>{});
+</script>
 </body>
 </html>
