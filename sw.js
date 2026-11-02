@@ -1,6 +1,6 @@
 // Pana Moto: guarda la app para abrir rápido y funcionar con poca señal.
 // Siempre intenta la versión más nueva primero (red), y usa la guardada si no hay conexión.
-const VERSION = "pm-v11";
+const VERSION = "pm-v12";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", e => {
@@ -41,4 +41,26 @@ self.addEventListener("fetch", e => {
       }))
     );
   }
+});
+
+// Avisos (push): se muestran cuando la app está cerrada o en segundo plano
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data.json(); } catch { d = { title: "Pana Moto", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil((async () => {
+    const wins = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    if (wins.some(w => w.visibilityState === "visible" && w.focused)) return; // la app ya está en pantalla
+    await self.registration.showNotification(d.title || "Pana Moto", {
+      body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined,
+      renotify: !!d.tag, vibrate: [200, 100, 200], data: { url: d.url || "./" }
+    });
+  })());
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const wins = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const w of wins) { if ("focus" in w) return w.focus(); }
+    return clients.openWindow(e.notification.data?.url || "./");
+  })());
 });

@@ -261,6 +261,17 @@ button.av{border:0;cursor:pointer;flex:none}
 .msg small{display:block;font-size:.66rem;opacity:.7;margin-top:2px;text-align:right}
 .route{font-size:.88rem;line-height:1.5}
 .reqpin{background:#7b1e3a;color:#fff;font-weight:800;font-size:.78rem;padding:4px 8px;border-radius:12px;border:2px solid #f0c35a;box-shadow:0 2px 6px rgba(0,0,0,.35);text-align:center;white-space:nowrap}
+.pushcard{display:flex;flex-direction:column;gap:6px;background:color-mix(in srgb,var(--gold) 22%,var(--surface));border:1.5px solid var(--gold);border-radius:14px;padding:12px}
+.pushcard b{font-size:.95rem} .pushcard span{font-size:.84rem;color:var(--muted);line-height:1.4} .pushcard .cta{padding:10px;font-size:.92rem}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -2px;padding:2px}
+.tabs button{flex:none;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-weight:700;font-size:.82rem;white-space:nowrap}
+.tabs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.tabs button i{font-style:normal;background:var(--gold);color:var(--gold-ink);border-radius:999px;padding:0 6px;margin-left:2px;font-size:.72rem}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.kpis div{background:var(--surface-2);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpis small{font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.kpis b{font-family:var(--display);font-size:1.2rem;font-variant-numeric:tabular-nums}
+textarea.inp{resize:vertical;min-height:70px;line-height:1.4}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -1680,6 +1691,7 @@ async function postLoc(force){
 }
 function applyFeed(f){
   const prev=S.feed; S.feed=f;
+  if(!prev && f.online && !S.online){ S.online=true; startGps(); }   // seguía disponible desde antes
   if(prev){
     if(f.requests.some(r=>!prev.requests.find(p=>p.id===r.id))){ beep(); if(S.mode==="con" && !f.active) toast("Nueva solicitud cerca de ti"); }
     if(!prev.active && f.active && f.active.status==="accepted"){ beep(); toast(`¡${f.active.passenger.first} aceptó tu oferta! Ve a recogerlo.`); S.chatOpen=false; S.dCancelAsk=false; }
@@ -1690,7 +1702,7 @@ function applyFeed(f){
     }
   }
   if(!f.active) S.selfCancel=false;
-  const sig=JSON.stringify({a:f.active, r:f.requests.map(r=>[r.id,r.offer_usd,r.my_offer?.status,r.my_offer?.amount_usd,Math.round(r.pickup_km*2)]), s:f.stats, p:f.promo_active});
+  const sig=JSON.stringify({a:f.active, r:f.requests.map(r=>[r.id,r.offer_usd,r.my_offer?.status,r.my_offer?.amount_usd,Math.round(r.pickup_km*2)]), s:f.stats, p:f.promo_active, w:f.wallet});
   if(sig!==S.feedSig){ S.feedSig=sig; if(S.mode==="con" && !S.overlay) render(); else drawLive(); }
 }
 function weekReal(st){
@@ -1822,6 +1834,294 @@ window.addEventListener("click", e=>{
 }, true);
 document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target.id==="chatIn"){ e.preventDefault(); $("#chatSend")?.click(); } });
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) kick(100); });
+/* ================= Fase 3: notificaciones, billetera, tasa BCV y administración ================= */
+Object.assign(S,{pushState:"off", wallet:null, wLoading:false, wAmt:5, wMet:"Pago Móvil", bcv:null});
+S.adm = Object.assign(S.adm||{}, {tab:"resumen", summary:null, live:null, rech:null, users:null, uq:"", busy:{}});
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const pushOK=()=>"serviceWorker" in navigator && "PushManager" in window && "Notification" in window && location.protocol==="https:";
+const TERMS=`<a href="terminos.html" target="_blank" rel="noopener">Términos y Política de privacidad</a>`;
+function b64u8(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); const raw=atob(s+"=".repeat((4-s.length%4)%4)); return Uint8Array.from(raw,c=>c.charCodeAt(0)); }
+
+/* ---------- Notificaciones ---------- */
+async function pushStatus(){
+  if(!pushOK()) return isIOS&&!standalone() ? "ios" : "unsupported";
+  if(Notification.permission==="denied") return "denied";
+  try{ const reg=await navigator.serviceWorker.ready; const sub=await reg.pushManager.getSubscription(); return sub&&Notification.permission==="granted"?"on":"off"; }
+  catch{ return "off"; }
+}
+async function enablePush(){
+  if(!pushOK()) throw new Error(isIOS?"En iPhone, primero instala la app: Compartir → Agregar a inicio.":"Este navegador no permite notificaciones. Usa Chrome.");
+  const perm=await Notification.requestPermission();
+  if(perm!=="granted"){ S.pushState=perm==="denied"?"denied":"off"; throw new Error("Permite las notificaciones para recibir avisos de tus viajes"); }
+  const reg=await navigator.serviceWorker.ready, {public_key}=await api("/push/key");
+  let sub=await reg.pushManager.getSubscription();
+  if(sub){ try{ await api("/push/subscribe",{method:"POST",body:sub.toJSON()}); S.pushState="on"; return; }catch{ await sub.unsubscribe().catch(()=>{}); sub=null; } }
+  sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64u8(public_key)});
+  await api("/push/subscribe",{method:"POST",body:sub.toJSON()});
+  S.pushState="on";
+}
+async function syncPush(){
+  S.pushState=await pushStatus();
+  if(S.pushState==="on" && SAVED.token){
+    try{ const reg=await navigator.serviceWorker.ready, sub=await reg.pushManager.getSubscription(); await api("/push/subscribe",{method:"POST",body:sub.toJSON()}); }catch{}
+  }
+  render();
+}
+function pushCard(role){
+  if(!SAVED.token || ["on","unsupported"].includes(S.pushState)) return "";
+  if(S.pushState==="ios") return `<div class="pushcard"><b>🔔 Avisos en iPhone</b><span>Primero instala Pana Moto: toca <b>Compartir</b> y luego <b>Agregar a inicio</b>. Ábrela desde el ícono y activa los avisos.</span></div>`;
+  if(S.pushState==="denied") return `<div class="pushcard"><b>🔕 Avisos bloqueados</b><span>Actívalos en Chrome: toca el candado junto a la dirección → <b>Notificaciones</b> → <b>Permitir</b>.</span></div>`;
+  const why = role==="d" ? "Te suenan las solicitudes aunque tengas la pantalla apagada." : "Te avisamos de ofertas, la llegada de tu moto y mensajes aunque cierres la app.";
+  return `<div class="pushcard"><b>🔔 Activa los avisos</b><span>${why}</span><button class="cta" id="pushOn">Activar notificaciones</button></div>`;
+}
+
+/* ---------- Tasa BCV ---------- */
+async function loadConfig(){
+  try{
+    const c=await api("/config");
+    SAVED.admin.com=c.commission; SAVED.admin.promo=c.promo_first_month; save("admin");
+    if(c.bcv?.rate){ RATE=+c.bcv.rate; S.bcv=c.bcv; }
+    render();
+  }catch{}
+}
+setInterval(loadConfig, 30*60*1000);
+const rateTxt = () => RATE.toLocaleString("es-VE",{maximumFractionDigits:2});
+
+/* ---------- Pantallas del pasajero ---------- */
+const _home3=home;
+home = () => _home3()
+  .replace('<h2>¿A dónde vas, pana?</h2>', pushCard("p")+'<h2>¿A dónde vas, pana?</h2>')
+  .replace(/<label class="rate" for="tasa">[\s\S]*?<\/label>/, S.bcv?`<p class="hint">Tasa BCV del día: <b>${rateTxt()} Bs/$</b></p>`:"");
+const _regpas=OV.regpas;
+OV.regpas = () => _regpas().replace('<button class="cta" id="rp-send">Enviar código por WhatsApp</button>',
+  `<button class="cta" id="rp-send">Enviar código por WhatsApp</button><p class="hint">Al continuar aceptas los ${TERMS}.</p>`);
+const _dreg=dregView;
+dregView = () => _dreg().replace('<button class="cta" id="dr-finish">Enviar registro</button>',
+  `<p class="hint">Al enviar confirmas que tus documentos son reales y aceptas los ${TERMS}.</p><button class="cta" id="dr-finish">Enviar registro</button>`);
+const _menu=OV.menu;
+OV.menu = () => _menu()
+  .replace('<button data-ov="sos">', `<button id="pushMenu">🔔 Notificaciones<span>${S.pushState==="on"?"Activadas · Probar":"Activar"}</span></button><button data-ov="sos">`)
+  .replace('<p class="hint">Prototipo: tus datos se guardan solo en este celular.</p>',
+    `<p class="hint">${TERMS}</p>${SAVED.token?`<button class="link" data-ov="delacct" style="color:var(--bad)">Eliminar mi cuenta</button>`:""}`);
+OV.delacct = () => `<div class="grab"></div><div class="ovhead"><h2>Eliminar mi cuenta</h2>${closeBtn()}</div>
+  <p class="hint">Se borran tu nombre, tu número y tus documentos. Tu historial de viajes queda sin datos personales. No se puede deshacer.</p>
+  <div class="panel"><strong>¿Seguro que quieres eliminar tu cuenta?</strong><button class="panic" id="delYes">Sí, eliminar mi cuenta</button><button class="ghost" data-close>No, volver</button></div>`;
+
+/* ---------- Motorizado: panel con billetera ---------- */
+dashView = function(){
+  const F=S.feed;
+  if(!F) return `<div class="grab"></div><div class="searching"><span class="pulse"></span>Conectando con Pana Moto…</div>`;
+  if(F.active) return driverTrip(F.active);
+  const st=F.stats, w=F.wallet||{balance:0, commission:F.commission}, free=w.promo_active||w.week_active, pct=Math.round(w.commission*100);
+  const low=!free && w.balance<0.5;
+  return `<div class="grab"></div>
+  <button class="toggle green" id="online" aria-pressed="${S.online}"><span>${S.online?"🟢 Estás disponible":"⚪ Estás desconectado"}<small>${S.online?"Los pasajeros cercanos te ven en el mapa":"Actívate para recibir solicitudes"}</small></span><i></i></button>
+  ${pushCard("d")}
+  <div class="wallet ${low?"low":""}"><div><small>Saldo para comisiones</small><b>${fmtUSD(w.balance)}</b>
+    <span>${w.promo_active?`🎉 Sin comisión hasta el ${fmtDate(Date.parse(w.promo_until))}`:w.week_active?`✅ Plan semanal hasta el ${fmtDate(Date.parse(w.week_until))}`:`Comisión: ${pct}% por viaje`}</span></div>
+    <div class="wbtn"><button class="cta" data-ov="wallet">Recargar</button><button class="ghost" data-ov="wplan">Mi plan</button></div></div>
+  ${low?`<div class="alert">Recarga saldo para poder enviar ofertas.</div>`:""}
+  <div class="row" style="justify-content:space-between;align-items:center"><span class="lbl">Hoy · ★ ${st.rating} · ${st.trips} viajes en total</span>
+    <div class="cur"><button data-dcur="USD" aria-pressed="${dCur==="USD"}">$</button><button data-dcur="VES" aria-pressed="${dCur==="VES"}">Bs</button></div></div>
+  <div class="earn"><div><small>Cobrado</small><b>${show(st.today_gross,dCur)}</b></div><div><small>Comisión</small><b>${st.today_com?"−":""}${show(st.today_com,dCur)}</b></div><div><small>Viajes</small><b>${st.today_trips}</b></div></div>
+  ${weekReal(st)}
+  ${S.online?`<h2>Solicitudes cerca de ti</h2>
+  ${F.requests.length?F.requests.map(r=>{ const mo=r.my_offer, c=free?0:+(r.offer_usd*w.commission).toFixed(2), can=w.balance+1e-9>=c; return `<div class="req">
+    <div class="top"><strong>${esc(r.passenger.first)} ★ ${r.passenger.rating} · ${r.svc==="encomienda"?"📦 Encomienda":"Viaje"}</strong><span class="hint">a ${r.pickup_km} km · ${r.eta_min} min</span></div>
+    <div class="route"><b>${esc(r.from.name)}</b> → <b>${esc(r.to.name)}</b> · ${(+r.km||0).toFixed(1)} km · ${esc(payTextT(r,r.offer_usd))}${r.women_only?` <span class="tag pk">Pidió motorizada</span>`:""}${(r.stops||[]).length?` · ${r.stops.length} parada${r.stops.length>1?"s":""}`:""}</div>
+    <div class="top"><span class="amt">${show(r.offer_usd,dCur)}</span><span class="hint">${c?`Comisión ${show(c,dCur)} · `:"Sin comisión · "}Ganas <b>${show(r.offer_usd-c,dCur)}</b></span></div>
+    ${mo&&mo.status==="pending" ? `<div class="mix"><span>⏳ Ofertaste ${show(mo.amount_usd,dCur)}. Esperando al pasajero…</span><button class="link" data-withdraw="${r.id}">Retirar</button></div>`
+      : !can ? `<button class="ghost" data-ov="wallet">Recarga ${fmtUSD(c-w.balance)} para ofertar</button>`
+      : `<div class="ctr"><button class="acc" data-offer="${r.id}" data-amt="${r.offer_usd}">Aceptar ${fmtUSD(r.offer_usd)}</button>
+      <button data-offer="${r.id}" data-amt="${r.offer_usd+.5}">${fmtUSD(r.offer_usd+.5)}</button><button data-offer="${r.id}" data-amt="${r.offer_usd+1}">${fmtUSD(r.offer_usd+1)}</button></div>`}
+  </div>`; }).join("") : `<div class="searching"><span class="pulse"></span>Buscando solicitudes cerca de ti…</div>`}`
+  : `<p class="hint">Mientras estés desconectado no recibes solicitudes.</p>`}
+  <div class="note">El pasajero te paga el viaje directo a ti. La comisión se descuenta de tu saldo al terminar cada viaje.</div>`;
+};
+function loadWallet(){
+  if(S.wLoading) return; S.wLoading=true;
+  api("/driver/wallet").then(w=>{ S.wallet=w; if(w.bcv?.rate) RATE=+w.bcv.rate; })
+    .catch(e=>{ toast(e.message); S.wallet={balance:0,ledger:[],recharges:[],commission:SAVED.admin.com,week_plan_usd:5,recharge_info:""}; })
+    .finally(()=>{ S.wLoading=false; if(["wallet","wplan"].includes(S.overlay)) render(); });
+}
+const ovHead = t => `<div class="grab"></div><div class="ovhead"><h2>${t}</h2>${closeBtn()}</div>`;
+const loadingTxt = t => `<div class="searching"><span class="pulse"></span>${t}</div>`;
+OV.wallet = () => {
+  const w=S.wallet; if(!w){ loadWallet(); return ovHead("Mi billetera")+loadingTxt("Cargando tu saldo…"); }
+  const bs=S.wAmt*(w.bcv?.rate||RATE), st={approved:["Aprobada","same"],pending:["En revisión","up"],rejected:["Rechazada","pk"]};
+  return ovHead("Mi billetera")+`<div class="wallet"><div><small>Saldo disponible</small><b>${fmtUSD(w.balance)}</b><span>Se usa para pagar la comisión de cada viaje</span></div></div>
+  <div class="lbl">Recargar saldo</div>
+  <div class="row">${[2,5,10,20].map(a=>`<button class="chip" data-wamt="${a}" aria-pressed="${S.wAmt===a}">$${a}</button>`).join("")}</div>
+  <div class="row">${["Pago Móvil","Binance USDT"].map(m=>`<button class="chip" data-wmet="${m}" aria-pressed="${S.wMet===m}">${m}</button>`).join("")}</div>
+  <div class="note">${S.wMet==="Pago Móvil"?`Paga <b>${fmtBs(bs)}</b>`:`Envía <b>${S.wAmt} USDT</b>`} a Pana Moto:<br>${esc(w.recharge_info||"Pide los datos de pago a soporte de Pana Moto.")}</div>
+  <label class="lbl" for="wref">Número de referencia del pago</label>
+  <input id="wref" class="inp" inputmode="numeric" placeholder="Ej. 123456" autocomplete="off" maxlength="40">
+  <button class="cta" id="wSend">Reportar pago</button>
+  <p class="hint">Revisamos tu pago, lo sumamos a tu saldo y te avisamos con una notificación.</p>
+  ${w.recharges.length?`<div class="lbl">Tus recargas</div>`+w.recharges.map(r=>`<div class="hrow"><span>${esc(r.method)} · Ref. ${esc(r.reference)}<small>${fmtDate(Date.parse(r.at))}${r.note?` · ${esc(r.note)}`:""}</small></span><b>${fmtUSD(r.amount_usd)} <span class="tag ${st[r.status][1]}">${st[r.status][0]}</span></b></div>`).join(""):""}
+  ${w.ledger.length?`<div class="lbl">Movimientos</div>`+w.ledger.map(l=>`<div class="hrow"><span>${esc(l.note||l.kind)}<small>${fmtDate(Date.parse(l.at))}</small></span><b style="color:${l.amount_usd<0?"var(--bad)":"var(--good)"}">${l.amount_usd<0?"−":"+"}${fmtUSD(Math.abs(l.amount_usd))}</b></div>`).join(""):""}`;
+};
+OV.wplan = () => {
+  const w=S.wallet; if(!w){ loadWallet(); return ovHead("Mi plan")+loadingTxt("Cargando…"); }
+  const pct=Math.round(w.commission*100), n=Math.ceil(w.week_plan_usd/Math.max(.01,2.5*w.commission));
+  return ovHead("Mi plan")+`${w.promo_active?`<div class="promo">🎉 Estás en tu mes sin comisión hasta el ${fmtDate(Date.parse(w.promo_until))}. Después eliges tu plan.</div>`:""}
+  ${w.week_active?`<div class="promo">✅ Plan semanal activo hasta el ${fmtDate(Date.parse(w.week_until))}.</div>`:""}
+  <div class="plans"><div class="plan" aria-pressed="${!w.week_active}"><b>${pct}% por viaje</b><small>Se descuenta de tu saldo al terminar cada viaje.</small></div>
+  <div class="plan" aria-pressed="${!!w.week_active}"><b>${fmtUSD(w.week_plan_usd)} a la semana</b><small>Viajes ilimitados sin comisión durante 7 días. Conviene si haces más de ${n} viajes por semana.</small></div></div>
+  ${!w.week_active&&!w.promo_active?`<button class="cta" id="wWeek">Activar plan semanal (${fmtUSD(w.week_plan_usd)} de tu saldo)</button>`:""}
+  <p class="hint">Tu saldo: <b>${fmtUSD(w.balance)}</b>. El plan semanal no se renueva solo.</p>`;
+};
+
+/* ---------- Panel de administrador ---------- */
+const TABS=[["resumen","Resumen"],["aprobar","Aprobar"],["recargas","Recargas"],["usuarios","Usuarios"],["ajustes","Ajustes"]];
+const ST_TXT={searching:"Buscando",accepted:"En camino",arrived:"Llegó",ongoing:"En viaje"};
+function admLoad(key, path, after){
+  if(S.adm.busy[key]) return; S.adm.busy[key]=true;
+  api(path,{admin:true}).then(r=>{ S.adm[key]=r; after&&after(r); })
+    .catch(e=>{ toast(e.message); S.adm[key]=key==="summary"?{error:true}:[]; if(/administrador/.test(e.message)){ SAVED.adminKey=""; save("adminKey"); } })
+    .finally(()=>{ S.adm.busy[key]=false; if(S.overlay==="admin") render(); });
+}
+function loadPending(){
+  if(S.adm.busy.list) return; S.adm.busy.list=true;
+  api("/admin/drivers?status=pending",{admin:true}).then(list=>{
+    S.adm.list=list;
+    list.forEach(d=>d.docs.forEach(k=>{ const key=d.id+"/"+k;
+      if(!S.adm.thumbs[key]) apiBlob(`/admin/drivers/${d.id}/docs/${k}`).then(u=>{ S.adm.thumbs[key]=u; if(S.overlay==="admin") render(); }).catch(()=>{}); }));
+  }).catch(e=>{ toast(e.message); S.adm.list=[]; }).finally(()=>{ S.adm.busy.list=false; if(S.overlay==="admin") render(); });
+}
+const tile = (l,v) => `<div><small>${l}</small><b>${v}</b></div>`;
+function admResumen(){
+  const s=S.adm.summary; if(!s||s.error) return loadingTxt("Cargando…");
+  if(!S.adm.live) admLoad("live","/admin/live",live=>{ drawLive(); M(()=>{ const pts=[...live.drivers.map(d=>[d.lat,d.lng]),...live.trips.map(t=>[t.from.lat,t.from.lng])];
+    if(pts.length) map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:15}); }); });
+  const live=S.adm.live;
+  return `<div class="kpis">${tile("Viajes hoy",s.trips_today)}${tile("Cobrado hoy",fmtUSD(s.gross_today))}${tile("Comisiones hoy",fmtUSD(s.commission_today))}
+    ${tile("En curso",s.active_trips)}${tile("Buscando moto",s.searching)}${tile("Motos en línea",s.drivers_online)}${tile("Usuarios",s.users)}${tile("Motorizados",s.drivers_approved)}</div>
+  <p class="hint">Tasa BCV: <b>${s.bcv?.rate?Number(s.bcv.rate).toLocaleString("es-VE",{maximumFractionDigits:2})+" Bs/$":"sin datos"}</b>${s.bcv?.source?` · ${esc(s.bcv.source)}`:""}${s.bcv?.updated?` · ${fmtDate(Date.parse(s.bcv.updated))}`:""}</p>
+  <div class="row" style="justify-content:space-between;align-items:center"><span class="lbl">Viajes activos ahora</span><button class="link" id="admRefresh">↻ Actualizar</button></div>
+  ${!live?loadingTxt("Cargando viajes…"):live.trips.length?live.trips.map(t=>`<div class="hrow"><span><b>${esc(t.passenger||"Pasajero")}</b>${t.driver?` con ${esc(t.driver)}`:""}<small>${esc(short(t.from.name,26))} → ${esc(short(t.to.name,26))} · ${fmtDate(Date.parse(t.created_at))}</small></span><b>${fmtUSD(t.usd)} <span class="tag ${t.status==="searching"?"up":"same"}">${ST_TXT[t.status]||t.status}</span></b></div>`).join("")
+    :`<p class="hint">No hay viajes activos en este momento.</p>`}
+  <p class="hint">En el mapa ves las motos en línea y el punto de recogida de cada viaje activo.</p>`;
+}
+function admAprobar(){
+  if(!S.adm.list){ loadPending(); return loadingTxt("Cargando registros…"); }
+  const big=S.adm.big && S.adm.thumbs[S.adm.big];
+  return `${big?`<div class="bigdoc"><img src="${big}" alt="Documento ampliado"><button class="ghost" data-big="">Cerrar foto</button></div>`:""}
+  ${S.adm.list.length ? S.adm.list.map(d=>`<div class="req">
+    <div class="top"><strong>${esc(d.name)}</strong><span class="hint">${esc(d.sex)}</span></div>
+    <div class="route">${esc(d.ci)} · +${esc(d.phone)}<br>${esc(d.model)} · <b>${esc(d.plate)}</b><br>Cobro: ${esc(d.bank)} · ${esc(d.pay_phone)}<br><span class="hint">Enviado ${fmtDate(Date.parse(d.created_at))}</span></div>
+    <div class="adocs">${d.docs.map(k=>{ const u=S.adm.thumbs[d.id+"/"+k]; return `<button data-big="${d.id}/${k}" aria-label="Ver ${DOC_LABEL[k]||k}">${u?`<img src="${u}" alt="">`:`<span class="pulse"></span>`}<small>${DOC_LABEL[k]||k}</small></button>`; }).join("")}</div>
+    <input id="rr-${d.id}" class="inp" placeholder="Motivo si lo rechazas" autocomplete="off">
+    <div class="ctr"><button class="acc" data-approve="${d.id}">Aprobar</button><button data-reject="${d.id}">Rechazar</button></div>
+  </div>`).join("") : `<p class="hint">No hay motorizados por aprobar.</p>`}`;
+}
+function admRecargas(){
+  if(!S.adm.rech){ admLoad("rech","/admin/recharges?status=pending"); return loadingTxt("Cargando recargas…"); }
+  return S.adm.rech.length ? S.adm.rech.map(r=>`<div class="req">
+    <div class="top"><strong>${esc(r.driver)}</strong><span class="amt">${fmtUSD(r.amount_usd)}</span></div>
+    <div class="route">${esc(r.method)} · Ref. <b>${esc(r.reference)}</b>${r.amount_bs?` · ${fmtBs(r.amount_bs)}`:""}<br>+${esc(r.phone)} · Saldo actual ${fmtUSD(r.balance)}<br><span class="hint">${fmtDate(Date.parse(r.at))}</span></div>
+    <input id="rn-${r.id}" class="inp" placeholder="Motivo si la rechazas" autocomplete="off">
+    <div class="ctr"><button class="acc" data-rok="${r.id}">Aprobar</button><button data-rno="${r.id}">Rechazar</button></div></div>`).join("")
+    : `<p class="hint">No hay recargas por revisar. Verifica cada pago en tu banco antes de aprobarlo.</p>`;
+}
+function admUsuarios(){
+  const form=`<div class="search"><input id="uq" class="inp" placeholder="Nombre o teléfono" value="${esc(S.adm.uq)}" autocomplete="off"><button class="ghost" id="uSearch" style="width:auto">Buscar</button></div>`;
+  if(!S.adm.users){ admLoad("users","/admin/users?q="+encodeURIComponent(S.adm.uq)); return form+loadingTxt("Buscando…"); }
+  return form+(S.adm.users.length ? S.adm.users.map(u=>`<div class="req">
+    <div class="top"><strong>${esc(u.name||"Sin nombre")}</strong>${u.blocked?`<span class="tag pk">Bloqueado</span>`:""}</div>
+    <div class="route">+${esc(u.phone)} · ${u.trips} viajes · ★ ${u.rating}<br><span class="hint">Desde ${fmtDate(Date.parse(u.created_at))}</span>
+      ${u.driver?`<br>🏍️ Motorizado ${({approved:"aprobado",pending:"por aprobar",rejected:"rechazado"})[u.driver.status]||esc(u.driver.status)} · ★ ${u.driver.rating} · ${u.driver.trips} viajes · Saldo <b>${fmtUSD(u.driver.balance)}</b>`:""}</div>
+    ${u.driver?`<div class="grid2"><input id="adj-${u.driver.id}" class="inp" inputmode="decimal" placeholder="Monto, ej. 5 o -2" autocomplete="off"><input id="adjn-${u.driver.id}" class="inp" placeholder="Motivo" autocomplete="off"></div>
+      <button class="ghost" data-uadj="${u.driver.id}">Ajustar saldo</button>`:""}
+    <button class="ghost" data-ublock="${u.id}" data-val="${u.blocked?0:1}" style="${u.blocked?"":"color:var(--bad)"}">${u.blocked?"Desbloquear":"Bloquear"}</button>
+  </div>`).join("") : `<p class="hint">Sin resultados.</p>`);
+}
+function admAjustes(){
+  const s=S.adm.summary; if(!s||s.error) return loadingTxt("Cargando…");
+  const c=s.settings, b=s.bcv||{};
+  return `<button class="toggle green" id="adm-promo" aria-pressed="${c.promo_first_month}"><span>Primer mes sin comisión<small>Para motorizados nuevos al aprobarlos</small></span><i></i></button>
+  <div class="mix"><span>Comisión por viaje</span><div class="stepper sm"><button id="adm-cm" aria-label="Bajar comisión">−</button><output>${Math.round(c.commission*100)}%</output><button id="adm-cp" aria-label="Subir comisión">+</button></div></div>
+  <div class="mix"><span>Plan semanal</span><div class="stepper sm"><button id="adm-wm" aria-label="Bajar precio">−</button><output>${fmtUSD(c.week_plan_usd)}</output><button id="adm-wp" aria-label="Subir precio">+</button></div></div>
+  <label class="lbl" for="rinfo">Datos de pago para recargas</label>
+  <textarea id="rinfo" class="inp" rows="3" maxlength="200" placeholder="Pago Móvil: Banco, teléfono, RIF o cédula">${esc(c.recharge_info||"")}</textarea>
+  <button class="ghost" id="admRinfo">Guardar datos de pago</button>
+  <div class="lbl">Tasa BCV</div>
+  <p class="hint">Automática: <b>${b.auto_rate?Number(b.auto_rate).toLocaleString("es-VE",{maximumFractionDigits:2})+" Bs/$":"sin datos todavía"}</b>${b.updated?` · revisada ${fmtDate(Date.parse(b.updated))}`:""}. ${c.bcv_manual?`Ahora usas la tasa manual: <b>${c.bcv_manual}</b>.`:"La app usa la automática."}</p>
+  <div class="search"><input id="bcvm" class="inp" inputmode="decimal" placeholder="Tasa manual (0 = automática)" value="${c.bcv_manual||""}" autocomplete="off"><button class="ghost" id="admBcv" style="width:auto">Guardar</button></div>
+  <button class="ghost" id="admBcvRefresh">↻ Consultar tasa BCV ahora</button>
+  <button class="link" id="admOut">Salir del panel de administrador</button>`;
+}
+adminReal = function(){
+  const head=ovHead("Panel de administrador");
+  if(!SAVED.adminKey) return head+`<p class="hint">Escribe la clave de administrador que configuraste en Railway (ADMIN_KEY).</p>
+    <input id="admkey" class="inp" type="password" placeholder="Clave de administrador" autocomplete="current-password"><button class="cta" id="admLogin">Entrar</button>`;
+  if(!S.adm.summary) admLoad("summary","/admin/summary");
+  const s=S.adm.summary, badge={aprobar:s?.drivers_pending, recargas:s?.recharges_pending};
+  const tabs=`<div class="tabs">${TABS.map(([k,l])=>`<button data-atab="${k}" aria-pressed="${S.adm.tab===k}">${l}${badge[k]?` <i>${badge[k]}</i>`:""}</button>`).join("")}</div>`;
+  const body={resumen:admResumen, aprobar:admAprobar, recargas:admRecargas, usuarios:admUsuarios, ajustes:admAjustes}[S.adm.tab]();
+  return head+tabs+body;
+};
+const _dl3=drawLive;
+drawLive = function(){
+  _dl3();
+  if(!map || S.overlay!=="admin" || S.adm.tab!=="resumen" || !S.adm.live) return;
+  S.adm.live.drivers.forEach(d=>liveMks.push(L.marker([d.lat,d.lng],{icon:motoIcon(d.busy?"trip":d.f?"f":""),interactive:false}).addTo(map)));
+  S.adm.live.trips.forEach(t=>liveMks.push(L.marker(t.from,{icon:ptIcon(t.status==="searching"?"#e8891a":"#16804a")}).addTo(map)));
+};
+const resetAdm = () => Object.assign(S.adm,{summary:null, live:null, rech:null, users:null, list:null, big:null});
+async function putSettings(body){
+  const r=await api("/admin/settings",{method:"PUT",admin:true,body});
+  if(S.adm.summary && !S.adm.summary.error){ S.adm.summary.settings={...S.adm.summary.settings,...r}; S.adm.summary.bcv=r.bcv; }
+  SAVED.admin.com=r.commission; SAVED.admin.promo=r.promo_first_month; save("admin");
+  if(r.bcv?.rate){ RATE=+r.bcv.rate; S.bcv=r.bcv; }
+}
+
+/* ---------- Eventos de la Fase 3 ---------- */
+window.addEventListener("click", e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  const d=t.dataset, val=id=>($("#"+id)?.value||"").trim();
+  const stop=()=>{ e.stopImmediatePropagation(); e.preventDefault(); };
+  const run=fn=>{ stop(); withBusy(t, fn); };
+  if(t.id==="pushOn") return run(async()=>{ await enablePush(); toast("¡Avisos activados! Te avisaremos aunque cierres la app."); });
+  if(t.id==="pushMenu") return run(async()=>{ if(S.pushState!=="on") await enablePush(); await api("/push/test",{method:"POST"}); toast("Te enviamos un aviso de prueba. Bloquea el celular para verlo."); });
+  if(d.ov==="wallet"||d.ov==="wplan"){ S.wallet=null; return; }
+  if(d.ov==="admin"){ resetAdm(); return; }
+  if(d.wamt){ stop(); S.wAmt=+d.wamt; render(); return; }
+  if(d.wmet){ stop(); S.wMet=d.wmet; render(); return; }
+  if(t.id==="wSend"){ const ref=val("wref"); if(digits(ref).length<4 && ref.length<6){ stop(); return toast("Escribe la referencia del pago"); }
+    return run(async()=>{ await api("/driver/recharges",{method:"POST",body:{amount_usd:S.wAmt, method:S.wMet, reference:ref}}); S.wallet=null; toast("Pago reportado. Te avisamos cuando lo aprobemos."); }); }
+  if(t.id==="wWeek") return run(async()=>{ await api("/driver/plan",{method:"POST",body:{plan:"week"}}); S.wallet=null; toast("Plan semanal activado por 7 días"); kick(300); });
+  if(t.id==="delYes") return run(async()=>{ await api("/me",{method:"DELETE"});
+    SAVED.token=null; save("token"); SAVED.user=null; save("user"); SAVED.driver=null; save("driver"); S.srv=null; S.feed=null; S.step="home"; S.overlay="regpas"; S.reg=null;
+    toast("Tu cuenta fue eliminada"); });
+  if(S.overlay!=="admin") return;
+  /* administrador */
+  if(t.id==="admLogin"){ const k=val("admkey"); if(!k){ stop(); return toast("Escribe la clave"); }
+    return run(async()=>{ SAVED.adminKey=k; try{ await api("/admin/check",{admin:true}); }catch(err){ SAVED.adminKey=""; throw err; } save("adminKey"); resetAdm(); }); }
+  if(d.atab){ stop(); S.adm.tab=d.atab; resetAdm(); render(); sheet.scrollTop=0; return; }
+  if(t.id==="admRefresh"){ stop(); resetAdm(); render(); return; }
+  if(t.id==="admReload"){ stop(); resetAdm(); render(); return; }
+  if(d.rok) return run(async()=>{ const r=await api(`/admin/recharges/${d.rok}/approve`,{method:"POST",admin:true}); toast(`Recarga aprobada. Nuevo saldo: ${fmtUSD(r.balance)}`); S.adm.rech=null; S.adm.summary=null; });
+  if(d.rno) return run(async()=>{ await api(`/admin/recharges/${d.rno}/reject`,{method:"POST",admin:true,body:{reason:val("rn-"+d.rno)}}); toast("Recarga rechazada"); S.adm.rech=null; S.adm.summary=null; });
+  if(t.id==="uSearch"){ stop(); S.adm.uq=val("uq"); S.adm.users=null; render(); return; }
+  if(d.ublock) return run(async()=>{ await api(`/admin/users/${d.ublock}/block`,{method:"POST",admin:true,body:{blocked:d.val==="1"}}); toast(d.val==="1"?"Usuario bloqueado":"Usuario desbloqueado"); S.adm.users=null; });
+  if(d.uadj){ const amt=parseFloat(val("adj-"+d.uadj).replace(",",".")); if(!amt){ stop(); return toast("Escribe el monto a sumar o restar"); }
+    return run(async()=>{ const r=await api(`/admin/drivers/${d.uadj}/adjust`,{method:"POST",admin:true,body:{amount_usd:amt, note:val("adjn-"+d.uadj)}}); toast(`Saldo ajustado: ${fmtUSD(r.balance)}`); S.adm.users=null; }); }
+  const c=S.adm.summary?.settings;
+  if(c && t.id==="adm-promo") return run(()=>putSettings({promo_first_month:!c.promo_first_month}));
+  if(c && (t.id==="adm-cp"||t.id==="adm-cm")) return run(()=>putSettings({commission:Math.min(.25,Math.max(0,+(c.commission+(t.id==="adm-cp"?.01:-.01)).toFixed(2)))}));
+  if(c && (t.id==="adm-wp"||t.id==="adm-wm")) return run(()=>putSettings({week_plan_usd:Math.max(0,+(c.week_plan_usd+(t.id==="adm-wp"?.5:-.5)).toFixed(2))}));
+  if(t.id==="admRinfo") return run(async()=>{ await putSettings({recharge_info:$("#rinfo").value.trim()}); toast("Datos de pago guardados"); });
+  if(t.id==="admBcv"){ const v=parseFloat(val("bcvm").replace(",",".")||"0"); if(isNaN(v)||v<0){ stop(); return toast("Escribe una tasa válida"); }
+    return run(async()=>{ await putSettings({bcv_manual:v}); toast(v?`Tasa manual: ${v} Bs/$`:"Usando la tasa BCV automática"); }); }
+  if(t.id==="admBcvRefresh") return run(async()=>{ const b=await api("/admin/bcv/refresh",{method:"POST",admin:true}); if(S.adm.summary) S.adm.summary.bcv=b; if(b.rate){ RATE=+b.rate; S.bcv=b; }
+    toast(b.auto_rate?`Tasa BCV: ${Number(b.auto_rate).toLocaleString("es-VE")} Bs/$`:"No se pudo consultar el BCV. Usa la tasa manual."); });
+}, true);
+
+loadConfig();
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.ready.then(()=>syncPush()).catch(()=>{});
+
 kick(600);
 }
 
