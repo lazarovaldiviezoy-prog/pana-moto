@@ -1,7 +1,7 @@
 // Pana Moto: guarda la app para abrir rápido y funcionar con poca señal.
 // Siempre intenta la versión más nueva primero (red), y usa la guardada si no hay conexión.
-const VERSION = "pm-v16";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
+const VERSION = "pm-v17";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./badge-96.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -51,7 +51,7 @@ self.addEventListener("push", e => {
     const wins = await clients.matchAll({ type: "window", includeUncontrolled: true });
     if (wins.some(w => w.visibilityState === "visible" && w.focused)) return; // la app ya está en pantalla
     await self.registration.showNotification(d.title || "Pana Moto", {
-      body: d.body || "", icon: "icon-192.png", badge: "icon-192.png", tag: d.tag || undefined,
+      body: d.body || "", icon: "icon-192.png", badge: "badge-96.png", tag: d.tag || undefined,
       renotify: !!d.tag, vibrate: [200, 100, 200], data: { url: d.url || "./" }
     });
   })());
