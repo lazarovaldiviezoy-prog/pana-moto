@@ -2496,8 +2496,8 @@ admAjustes = () => { const s=S.adm.summary; if(!s||s.error) return _ajustes4();
   return _ajustes4().replace('<button class="link" id="admOut">', `
   <div class="lbl">Soporte</div>
   <div class="search"><input id="supp" class="inp" inputmode="tel" placeholder="WhatsApp de soporte, ej. 0412-1234567" value="${esc(s.settings.support_phone||"")}" autocomplete="off"><button class="ghost" id="admSupp" style="width:auto">Guardar</button></div>
-  <div class="lbl">Código por WhatsApp</div>
-  <p class="hint">${wa.configured?"✅ Conectado con tu n8n.":"⚪ Sin conectar: falta <b>WHATSAPP_WEBHOOK_URL</b> en Railway."} ${wa.dev_mode?"Modo prueba activo: el código también sale en pantalla (DEV_MODE=1).":"Modo real: el código solo llega por WhatsApp."}</p>
+  <div class="lbl">WhatsApp</div>
+  <p class="hint">${wa.configured?(wa.via==="evolution"?"✅ Conectado con Evolution API.":"✅ Conectado por webhook (n8n)."):"⚪ Sin conectar: faltan <b>EVOLUTION_URL</b> y <b>EVOLUTION_API_KEY</b> en Railway."} ${wa.dev_mode?"Modo prueba activo: el código también sale en pantalla (DEV_MODE=1).":"Modo real: el código solo llega por WhatsApp."}</p>
   <div class="search"><input id="waTest" class="inp" inputmode="tel" placeholder="Tu celular para la prueba" autocomplete="off"><button class="ghost" id="admWa" style="width:auto">Probar</button></div>
   <button class="link" id="admOut">`);
 };
@@ -2538,7 +2538,7 @@ window.addEventListener("click", e=>{
   if(t.id==="admSupp") return run(async()=>{ await putSettings({support_phone:val("supp")}); S.support=val("supp"); toast("Número de soporte guardado"); });
   if(t.id==="admWa"){ if(digits(val("waTest")).length<9){ stop(); return toast("Escribe tu número de celular"); }
     return run(async()=>{ const r=await api("/admin/whatsapp/test",{method:"POST",admin:true,body:{phone:val("waTest")}});
-      toast(!r.configured?"Falta WHATSAPP_WEBHOOK_URL en Railway":r.sent?"Mensaje enviado. Revisa tu WhatsApp.":"n8n no respondió bien. Revisa el flujo y el token."); }); }
+      toast(!r.configured?"Falta configurar EVOLUTION_URL y EVOLUTION_API_KEY en Railway":r.sent?"Mensaje enviado. Revisa tu WhatsApp.":"No se envió: "+(r.error||"revisa que la instancia esté conectada")); }); }
 }, true);
 
 api("/config").then(c=>{ S.support=c.support_phone||""; }).catch(()=>{});
@@ -2960,7 +2960,7 @@ function drawerHTML(){
     + push + theme + '<div class="sep"></div>' + help
     + dItem('data-ov="sos"',"🚨","Contacto de emergencia",`<small>${SAVED.sos?esc(SAVED.sos.name):"Sin configurar"}</small>`)
     + (!isDrv && u ? dItem('data-dmode="con"',"🏍️","Quiero ser motorizado") : "") + admin;
-  const foot = `<a href="terminos.html" target="_blank" rel="noopener">Términos y Política de privacidad</a>${u?`<div class="fb"><button id="logout">${svgIc("🚪")} Cerrar sesión</button>${SAVED.token?`<button class="del" data-ov="delacct">Eliminar cuenta</button>`:""}</div>`:""}<span class="ver">Pana Moto · versión 21</span>`;
+  const foot = `<a href="terminos.html" target="_blank" rel="noopener">Términos y Política de privacidad</a>${u?`<div class="fb"><button id="logout">${svgIc("🚪")} Cerrar sesión</button>${SAVED.token?`<button class="del" data-ov="delacct">Eliminar cuenta</button>`:""}</div>`:""}<span class="ver">Pana Moto · versión 22</span>`;
   return `<div class="dscrim" data-dclose></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Menú"><div class="dh"><button class="dx" data-dclose aria-label="Cerrar menú">${svgIc("@x")}</button>${head}${sw}</div><div class="dbody">${items}</div><div class="df">${foot}</div></aside>`;
 }
 const prettyPhone = p => { const d=String(p||"").replace(/\D/g,""); const l=d.startsWith("58")&&d.length===12?"0"+d.slice(2):d; return l.length===11?`${l.slice(0,4)}-${l.slice(4,7)}-${l.slice(7)}`:(p||""); };
