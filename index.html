@@ -2642,6 +2642,28 @@ function showOnboarding(){
   el.querySelector("#onbSkip").onclick=close;
 }
 
+
+/* ================= Seguimiento en vivo: link para la familia ================= */
+const trackUrl = () => S.srv?.share_token ? new URL("seguir.html#t="+S.srv.share_token, location.href).href : null;
+const _shareTextLive = shareText;
+shareText = function(){
+  const u=trackUrl(); if(!u) return _shareTextLive();
+  const d=S.chosen?.d, enc=S.srv?.svc==="encomienda";
+  return `${enc?"Sigue mi encomienda":"Sigue mi viaje"} en vivo en Pana Moto: ${u}\n`+
+    (d?`${enc?"La lleva":"Voy con"} ${d.n} (${d.moto}, placa ${d.plate}). `:"")+`De ${S.from?.name||""} a ${S.to?.name||""}.`;
+};
+const _panicLive = panicPanel;
+panicPanel = function(){
+  const h=_panicLive(), u=trackUrl(); if(!u) return h;
+  return h.replace(/(href="https:\/\/wa\.me\/\d*\?text=)([^"]*)/, (m,a,b)=>a+encodeURIComponent(decodeURIComponent(b)+`\nSígueme en vivo: ${u}`));
+};
+window.addEventListener("click", e=>{
+  const a=e.target.closest('a[href^="https://wa.me/?text="]'); if(!a || !trackUrl() || !navigator.share) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  navigator.share({title:"Mi viaje en Pana Moto", text:decodeURIComponent(a.href.split("?text=")[1])}).catch(err=>{
+    if(err?.name!=="AbortError") window.open(a.href,"_blank","noopener"); });
+}, true);
+
 /* ================= Arranque ================= */
 if(API && !SAVED.token){ SAVED.user=null; save("user"); }
 if(API && SAVED.driver && !SAVED.driver.serverId){ SAVED.driver=null; save("driver"); }
