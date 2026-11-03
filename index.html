@@ -529,6 +529,13 @@ h2 .ic{width:1em;height:1em;vertical-align:-.1em;color:var(--red)}
 .histtot small{display:block;color:var(--muted);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
 .histtot b{font:800 1.15rem var(--display)}
 @media (prefers-reduced-motion:reduce){.drawer,.dscrim{transition:none}}
+
+/* Elegir punto: arrastrar el pin o tocar el mapa */
+.centerpin{--dx:0px;--dy:0px;transform:translate(calc(-50% + var(--dx)),calc(-100% + var(--dy)))}
+.centerpin .head{pointer-events:auto;cursor:grab;touch-action:none;position:relative}
+.centerpin .head::before{content:"";position:absolute;inset:-14px}
+.centerpin.dragpin .head{cursor:grabbing;transform:rotate(-45deg) scale(1.12)}
+.centerpin.dragpin::after{opacity:.25}
 </style>
 </head>
 <body>
@@ -873,7 +880,7 @@ function pick(){
   <div class="results">${S.results.map((x,i)=>`<button data-res="${i}"><strong>${esc(x.name)}</strong><span>${esc(x.sub)}</span></button>`).join("")}</div>
   ${isFrom&&S.gps?`<button class="ghost" id="useGps">📍 Usar mi ubicación actual</button>`:""}
   ${S.picking==="to"&&!S.saveAs?quick():""}
-  <p class="hint">O mueve el mapa y deja el pin en el punto exacto:</p>
+  <p class="hint">Toca el mapa o arrastra el pin hasta el punto exacto:</p>
   <div class="field" style="grid-template-columns:14px 1fr"><span class="dot ${isFrom?"a":S.picking==="stop"?"c":"b"}"></span><span class="txt"><span id="pickName">${esc(S.pickName)}</span></span></div>
   <div class="row nw"><button class="ghost" id="pickCancel">Volver</button><button class="cta" id="pickOk">Confirmar</button></div>`;
 }
@@ -2953,7 +2960,7 @@ function drawerHTML(){
     + push + theme + '<div class="sep"></div>' + help
     + dItem('data-ov="sos"',"🚨","Contacto de emergencia",`<small>${SAVED.sos?esc(SAVED.sos.name):"Sin configurar"}</small>`)
     + (!isDrv && u ? dItem('data-dmode="con"',"🏍️","Quiero ser motorizado") : "") + admin;
-  const foot = `<a href="terminos.html" target="_blank" rel="noopener">Términos y Política de privacidad</a>${u?`<div class="fb"><button id="logout">${svgIc("🚪")} Cerrar sesión</button>${SAVED.token?`<button class="del" data-ov="delacct">Eliminar cuenta</button>`:""}</div>`:""}<span class="ver">Pana Moto · versión 20</span>`;
+  const foot = `<a href="terminos.html" target="_blank" rel="noopener">Términos y Política de privacidad</a>${u?`<div class="fb"><button id="logout">${svgIc("🚪")} Cerrar sesión</button>${SAVED.token?`<button class="del" data-ov="delacct">Eliminar cuenta</button>`:""}</div>`:""}<span class="ver">Pana Moto · versión 21</span>`;
   return `<div class="dscrim" data-dclose></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Menú"><div class="dh"><button class="dx" data-dclose aria-label="Cerrar menú">${svgIc("@x")}</button>${head}${sw}</div><div class="dbody">${items}</div><div class="df">${foot}</div></aside>`;
 }
 const prettyPhone = p => { const d=String(p||"").replace(/\D/g,""); const l=d.startsWith("58")&&d.length===12?"0"+d.slice(2):d; return l.length===11?`${l.slice(0,4)}-${l.slice(4,7)}-${l.slice(7)}`:(p||""); };
@@ -3007,6 +3014,38 @@ OV.history = () => { const h=_histDr(); const L_=S.srvHist; if(!Array.isArray(L_
   const d=new Date(), m=L_.filter(x=>{ const t=new Date(x.completed_at); return t.getMonth()===d.getMonth() && t.getFullYear()===d.getFullYear(); });
   const spent=m.reduce((a,x)=>a+(x.usd||0)+(x.tip_usd||0),0);
   return h.replace(/(<div class="ovhead">[\s\S]*?<\/div>)/, `$1<div class="histtot"><div><small>Este mes</small><b>${m.length} viaje${m.length===1?"":"s"}</b></div><div><small>Gastado</small><b>${fmtUSD(spent)}</b></div></div>`); };
+
+
+/* ================= Elegir punto: tocar el mapa o arrastrar el pin ================= */
+const _initMapPk = initMap;
+initMap = function(){
+  _initMapPk();
+  if(!map) return;
+  map.on("click", e=>{ if(S.picking) map.panTo(e.latlng,{animate:!REDUCE}); });   // tocas un punto y el pin va ahí
+};
+(()=>{
+  const pin=$("#cpin"), head=$("#cpinHead"); let st=null;
+  head.addEventListener("pointerdown", e=>{
+    if(!S.picking || !map) return;
+    e.preventDefault(); e.stopPropagation(); head.setPointerCapture(e.pointerId);
+    st={x:e.clientX, y:e.clientY, dx:0, dy:0}; pin.classList.add("dragpin","lift");
+  });
+  head.addEventListener("pointermove", e=>{
+    if(!st) return;
+    st.dx=e.clientX-st.x; st.dy=e.clientY-st.y;
+    pin.style.setProperty("--dx",st.dx+"px"); pin.style.setProperty("--dy",st.dy+"px");
+  });
+  const end=()=>{
+    if(!st) return;
+    const {dx,dy}=st; st=null;
+    pin.classList.remove("dragpin"); pin.style.setProperty("--dx","0px"); pin.style.setProperty("--dy","0px");
+    if(Math.abs(dx)+Math.abs(dy)<4){ pin.classList.remove("lift"); return; }
+    // el punto donde soltaste el pin pasa a ser el centro del mapa
+    const c=map.getSize().divideBy(2), ll=map.containerPointToLatLng([c.x+dx, c.y+dy]);
+    map.panTo(ll,{animate:!REDUCE});
+  };
+  head.addEventListener("pointerup", end); head.addEventListener("pointercancel", end);
+})();
 
 /* ================= Arranque ================= */
 if(API && !SAVED.token){ SAVED.user=null; save("user"); }
